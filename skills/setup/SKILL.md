@@ -15,9 +15,9 @@ Check the current state:
 [ -s ~/.claude-homelab/.env ] && echo "NON-EMPTY" || echo "EMPTY"
 ```
 
-If the file is missing entirely, run `scripts/setup-creds.sh` first to create it from the template:
+If the file is missing entirely, run `setup-creds.sh` first to create it from the template:
 ```bash
-~/claude-homelab/scripts/setup-creds.sh
+"${CLAUDE_PLUGIN_ROOT:-$HOME/claude-homelab}/skills/setup/scripts/setup-creds.sh"
 ```
 
 ## The Wizard Flow
