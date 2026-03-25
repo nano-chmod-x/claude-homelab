@@ -4,7 +4,11 @@
 
 set -euo pipefail
 
-source "${HOME}/.claude-homelab/load-env.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LOAD_ENV="${HOME}/.claude-homelab/load-env.sh"
+[[ ! -f "$_LOAD_ENV" ]] && _LOAD_ENV="$SCRIPT_DIR/../load-env.sh"
+# shellcheck source=/dev/null
+source "$_LOAD_ENV" || { echo "ERROR: load-env.sh not found. Run /homelab-core:setup" >&2; exit 1; }
 
 # Load credentials from .env
 load_service_credentials "plex" "PLEX_URL" "PLEX_TOKEN"

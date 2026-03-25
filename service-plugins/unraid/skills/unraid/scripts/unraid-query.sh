@@ -6,7 +6,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
-source "${HOME}/.claude-homelab/load-env.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LOAD_ENV="${HOME}/.claude-homelab/load-env.sh"
+[[ ! -f "$_LOAD_ENV" ]] && _LOAD_ENV="$SCRIPT_DIR/../load-env.sh"
+# shellcheck source=/dev/null
+source "$_LOAD_ENV" || { echo "ERROR: load-env.sh not found. Run /homelab-core:setup" >&2; exit 1; }
 load_env_file || true  # non-fatal: CLI flags can override env vars
 
 # Usage function

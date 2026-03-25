@@ -7,7 +7,11 @@ set -euo pipefail
 # Load environment if available (ZFS doesn't require credentials, but supports standardized env loading)
 SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
-source "${HOME}/.claude-homelab/load-env.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_LOAD_ENV="${HOME}/.claude-homelab/load-env.sh"
+[[ ! -f "$_LOAD_ENV" ]] && _LOAD_ENV="$SCRIPT_DIR/../load-env.sh"
+# shellcheck source=/dev/null
+source "$_LOAD_ENV" || { echo "ERROR: load-env.sh not found. Run /homelab-core:setup" >&2; exit 1; }
 
 # Colors for output
 RED='\033[0;31m'
