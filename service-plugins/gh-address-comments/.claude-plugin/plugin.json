@@ -1,7 +1,7 @@
 {
   "name": "gh-address-comments",
   "description": "Address PR comments and fix review feedback using gh CLI - systematic handling of GitHub code review comments",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "jmagar",
     "email": "jmagar@users.noreply.github.com"
