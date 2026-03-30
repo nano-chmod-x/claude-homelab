@@ -67,17 +67,21 @@
       "homepage": "https://github.com/jmagar/claude-homelab"
     },
     {
-      "name": "overseerr",
-      "source": "./service-plugins/overseerr",
-      "description": "Request movies and TV shows via Overseerr, monitor request status, and manage media requests",
-      "version": "1.2.0",
+      "name": "overseerr-mcp",
+      "source": {
+        "source": "github",
+        "repo": "jmagar/overseerr-mcp"
+      },
+      "description": "Request movies and TV shows via Overseerr with full MCP tooling and HTTP fallback. Requires overseerr-mcp MCP server running.",
+      "version": "1.0.0",
       "category": "media",
       "tags": [
         "overseerr",
         "media-requests",
-        "plex"
+        "plex",
+        "mcp"
       ],
-      "homepage": "https://github.com/jmagar/claude-homelab"
+      "homepage": "https://github.com/jmagar/overseerr-mcp"
     },
     {
       "name": "prowlarr",
@@ -150,18 +154,21 @@
       "homepage": "https://github.com/jmagar/claude-homelab"
     },
     {
-      "name": "unifi",
-      "source": "./service-plugins/unifi",
-      "description": "Monitor UniFi network via local gateway API - device status, client monitoring, network health, DPI statistics",
-      "version": "1.2.1",
+      "name": "unifi-mcp",
+      "source": {
+        "source": "github",
+        "repo": "jmagar/unifi-mcp"
+      },
+      "description": "Monitor and manage UniFi network - devices, clients, firewall, DPI, alarms via MCP tools with HTTP fallback. Requires unifi-mcp MCP server running.",
+      "version": "1.0.0",
       "category": "infrastructure",
       "tags": [
         "unifi",
         "networking",
         "monitoring",
-        "read-only"
+        "mcp"
       ],
-      "homepage": "https://github.com/jmagar/claude-homelab"
+      "homepage": "https://github.com/jmagar/unifi-mcp"
     },
     {
       "name": "tailscale",
@@ -319,6 +326,24 @@
         "gh-cli"
       ],
       "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "swag-mcp",
+      "source": {
+        "source": "github",
+        "repo": "jmagar/swag-mcp"
+      },
+      "description": "Manage SWAG nginx reverse proxy configs - create, edit, view, and remove subdomain/subfolder proxy configurations with SSH remote support. Requires swag-mcp MCP server running.",
+      "version": "1.0.0",
+      "category": "infrastructure",
+      "tags": [
+        "swag",
+        "nginx",
+        "reverse-proxy",
+        "ssl",
+        "mcp"
+      ],
+      "homepage": "https://github.com/jmagar/swag-mcp"
     }
   ]
 }
