@@ -291,6 +291,19 @@ mcp__my-service-mcp__my_service
 
 ### `.claude-plugin/plugin.json`
 
+**The `userConfig` block is the canonical source of truth for all plugin configuration.**
+Every environment variable the Docker Compose service and MCP server need must be declared as a
+`userConfig` field. There is no other mechanism for getting values into `.env` — `sync-env.sh`
+reads exclusively from `CLAUDE_PLUGIN_OPTION_*` vars, which are populated exclusively from
+`userConfig`. If a required env var is not in `userConfig`, it will never reach the container.
+
+`userConfig` must cover at minimum:
+- **MCP server URL** — so `.mcp.json` can connect (`sensitive: false`)
+- **MCP bearer token** — so `.mcp.json` can authenticate (`sensitive: false`)
+- **Service URL / host** — base URL of the proxied service (`sensitive: true`)
+- **Service credentials** — API key, password, token, or whatever the service requires (`sensitive: true`)
+- **Any other required env vars** — ports, log levels, feature flags (`sensitive` as appropriate)
+
 All four fields (`name`, `type`, `title`, `description`) are required by the validator on every
 `userConfig` entry. `type` and `title` are not in official docs but the validator enforces them.
 Use all available metadata fields.
