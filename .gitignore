@@ -99,6 +99,9 @@ docker-compose.override.yml
 temp/
 tmp/
 
+# oh-my-claudecode state
+.omc/
+
 # Session and Documentation Directories
 .docs/
 .serena/
