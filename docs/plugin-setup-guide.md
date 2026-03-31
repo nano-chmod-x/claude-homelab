@@ -1,8 +1,8 @@
 # Claude Code Plugin Setup Guide
 
 This guide documents the exact structure, conventions, and standards for all MCP-server-backed
-Claude Code plugins in this ecosystem (`gotify-mcp`, `overseerr-mcp`, `unifi-mcp`, `swag-mcp`,
-`unraid-mcp`, `synapse-mcp`, `syslog-mcp`, `axon`, `arcane-mcp`, and any future additions).
+Claude Code plugins in this ecosystem (`../workspace/gotify-mcp`, `../workspace/overseerr-mcp`, `../workspace/unifi-mcp`, `../workspace/swag-mcp`,
+`../workspace/unraid-mcp`, `../workspace/synapse-mcp`, `../workspace/syslog-mcp`, `../workspace/axon`, `../workspace/arcane-mcp`, and any future additions).
 
 ---
 
@@ -105,7 +105,7 @@ use the same tool handlers and business logic.
 ## Directory Layout
 
 ```
-repo-root/
+my-service-mcp/
 ├── .cache/                      # ALL tool artifacts — see .cache Convention below
 ├── .claude-plugin/
 │   └── plugin.json              # Claude Code plugin manifest
@@ -403,9 +403,12 @@ frontmatter, structure, and content pass validation before commit.
 
 ## HTTP Security — Bearer Tokens
 
-All MCP servers **must**:
+HTTP-transport MCP servers **must**:
 1. Use HTTP bearer token authentication by default (exception: `MY_SERVICE_MCP_NO_AUTH=true` for proxy-managed auth)
 2. Expose `GET /health` returning `{"status":"ok"}` — unauthenticated, exempt from bearer token enforcement. Used by Docker healthchecks, compose healthchecks, and `test_live.sh`.
+
+**Stdio transport does not use bearer auth.** `stdio` mode runs over stdin/stdout and has no HTTP
+headers, so bearer token enforcement applies only when `MY_SERVICE_MCP_TRANSPORT=http`.
 
 ### Environment variable naming convention
 
@@ -447,7 +450,7 @@ Set MY_SERVICE_MCP_TOKEN to a secure random token, or set MY_SERVICE_MCP_NO_AUTH
 Generate a token with: openssl rand -hex 32
 ```
 
-The `sync-env.sh` hook **fails with a clear error** if `MCP_BEARER_TOKEN` is not set — it does
+The `sync-env.sh` hook **fails with a clear error** if `MY_SERVICE_MCP_TOKEN` is not set — it does
 not auto-generate tokens. Auto-generation causes a token mismatch: the server reads the generated
 token but Claude Code sends the (empty) userConfig value, resulting in silent 401 errors on every
 MCP call. Users must generate a token and paste it into the plugin's userConfig field:
@@ -650,6 +653,17 @@ The `sync-env.sh` hook maps this to `MY_SERVICE_MCP_TOKEN` in `.env`.
 
 No other tool structure is allowed. Do not create individual tools per operation.
 
+### Engineering principles
+
+Plugin work should follow a simple engineering loop:
+
+- **Research → Plan → Validate → Implement**
+- **Prove it works**
+
+Do not jump straight from an idea to implementation. Inspect the service API, define the tool
+contract, validate the schema and safety model, then implement. Completion requires evidence:
+tests, live calls, schema validation, or runtime output — not assumptions.
+
 ### Why
 
 - Claude Code loads all tool definitions into context on every request
@@ -657,6 +671,17 @@ No other tool structure is allowed. Do not create individual tools per operation
 - 1 tool with 20 actions = ~800 tokens total — ~12× improvement
 - Subactions further group related operations without new top-level tokens
 - The help tool lets Claude discover capabilities at runtime without extra context overhead
+
+### Context and token efficiency
+
+This guide optimizes for low-overhead tool use:
+
+- Keep tool count minimal — exactly one domain tool plus one help tool
+- Keep list responses small by default — pagination is mandatory and conservative defaults are preferred
+- Keep examples and docs concise — include the contract, not every possible variation
+
+Token waste is design debt. Reduce schema surface area, response size, and documentation noise
+unless they clearly improve usability.
 
 ### Pattern
 
@@ -680,6 +705,7 @@ async def my_service(
     name: Optional[str] = None,
     query: Optional[str] = None,
     config: Optional[dict] = None,
+    confirm: bool = False,
 ) -> dict | list | str:
     """Interact with My Service.
 
@@ -688,7 +714,7 @@ async def my_service(
       get      — get resource by id
       create   — create new resource (requires name, config)
       update   — update resource (requires id, config)
-      delete   — delete resource by id (destructive — confirm first)
+      delete   — delete resource by id (destructive — requires confirm=true)
       search   — search resources by query
       status   — check service health
       logs     — tail recent log lines
@@ -708,7 +734,7 @@ async def my_service(
         case "update":
             return await _update_resource(ctx, id, subaction, config)
         case "delete":
-            return await _delete_resource(ctx, id)
+            return await _delete_resource(ctx, id, confirm=confirm)
         case "search":
             return await _search_resources(ctx, query)
         case "status":
@@ -735,7 +761,7 @@ async def my_service(
     action: Literal["list", ...],
     # Pagination
     offset: int = 0,                # Skip N results
-    limit: int = 20,                # Max results (default 20, max 500)
+    limit: int = 10,                # Max results (recommended default 10, max 500)
     # Sorting
     sort_by: str | None = None,     # Field to sort by (e.g., "created", "name")
     sort_order: str | None = None,  # "asc" or "desc" (default "desc")
@@ -752,7 +778,7 @@ async def my_service(
 server.tool("my_service", {
   action: z.enum(["list", ...]),
   offset: z.number().int().min(0).default(0).describe("Skip N results"),
-  limit: z.number().int().min(1).max(500).default(20).describe("Max results"),
+  limit: z.number().int().min(1).max(500).default(10).describe("Max results"),
   sort_by: z.string().optional().describe("Field to sort by"),
   sort_order: z.enum(["asc", "desc"]).default("desc").optional(),
   query: z.string().optional().describe("Free-text filter"),
@@ -769,7 +795,7 @@ pub struct ListRequest {
     pub subaction: Option<ListSubaction>,
     /// Skip N results (default 0)
     pub offset: Option<usize>,
-    /// Max results (default 20, max 500)
+    /// Max results (recommended default 10, max 500)
     pub limit: Option<i64>,
     /// Field to sort by
     pub sort_by: Option<String>,
@@ -786,14 +812,15 @@ pub struct ListRequest {
 {
   "items": [...],
   "total": 142,
-  "limit": 20,
+  "limit": 10,
   "offset": 0,
   "has_more": true
 }
 ```
 
 **Rules:**
-- Default `limit` to a sensible value (50) — never return all records by default
+- Default `limit` to a sensible value. Recommended default: `10` unless the domain clearly
+  justifies a different number. Never return all records by default.
 - Include `total` count so Claude knows how much data exists
 - Include `has_more` flag so Claude can request the next page
 - Apply the response size limit (~512KB) as a safety net even with pagination
@@ -803,6 +830,15 @@ pub struct ListRequest {
 Every server **must** expose a help tool that returns the full action/subaction reference,
 auto-generated from the domain tool's schema. This lets Claude discover capabilities
 at runtime without the SKILL.md needing to be loaded.
+
+The help tool response is part of the contract. It **must** expose, for every action:
+- action name
+- description
+- required vs optional parameters
+- subactions, if any
+- destructive marker where applicable
+
+Tests should fail if the help tool is missing, cannot be called, or omits any required fields.
 
 #### Python
 
@@ -829,7 +865,7 @@ async def my_service_help(
                 "reload": "Reload resource config",
             },
         },
-        "delete": {"description": "Delete resource by id (DESTRUCTIVE)", "params": {"id": "Resource ID (required)"}},
+        "delete": {"description": "Delete resource by id (DESTRUCTIVE)", "params": {"id": "Resource ID (required)", "confirm": "Set true after confirmation or elicitation"}},
         "search": {"description": "Search resources", "params": {"query": "Search query (required)"}},
         "status": {"description": "Check service health", "params": {}},
         "logs": {"description": "Tail recent log lines", "params": {}},
@@ -881,6 +917,18 @@ The help tool schema object should be **derived from or kept in sync with** the 
 tool's actual type definitions — not maintained as a separate copy. If your language
 supports runtime reflection on the tool schema, use that.
 
+### Response shape contract
+
+Tool responses should be structurally consistent across plugins:
+
+- `list` actions **must** return a JSON object with pagination metadata
+- `get` / `create` / `update` actions should return a JSON object, not ad-hoc plain text
+- `delete` and other destructive actions may return a concise JSON object or concise text, but must remain testable
+- Error responses should follow a consistent format and include actionable guidance
+
+Prefer JSON objects over free-form text for normal success responses. Free-form prose is harder
+to validate, harder to diff, and more likely to drift across implementations.
+
 ### SKILL.md tool reference format for action+subaction tools
 
 ```
@@ -891,6 +939,7 @@ mcp__my-service-mcp__my_service
   name:       (required for create) Resource name
   query:      (required for search) Search query
   config:     (optional) Configuration dict
+  confirm:    (required for destructive actions unless env bypass / elicitation succeeds) true
 ```
 
 ---
@@ -948,6 +997,24 @@ async def my_service(action: str, id: str | None = None, ...) -> dict:
 - Extract middleware into separate files
 
 This keeps code reviewable, testable, and navigable.
+
+### Naming consistency
+
+Use one canonical service identifier and derive everything else from it consistently:
+
+| Artifact | Pattern | Example |
+|---|---|---|
+| Plugin name | `<service>-mcp` | `my-service-mcp` |
+| MCP server name | `<service>-mcp` | `my-service-mcp` |
+| Domain tool name | `<service_with_underscores>` | `my_service` |
+| Help tool name | `<service_with_underscores>_help` | `my_service_help` |
+| Env prefix | `<SERVICE>_` / `<SERVICE>_MCP_` | `MY_SERVICE_`, `MY_SERVICE_MCP_` |
+| Docker service name | `<service>-mcp` | `my-service-mcp` |
+| Docker network default | `<service>_mcp` | `my-service_mcp` |
+| Reverse proxy hostname | `<service>` | `my-service` |
+
+Do not mix naming schemes inside one plugin. Naming drift is one of the fastest ways to create
+confusing manifests, broken hooks, and tests that check the wrong thing.
 
 ---
 
@@ -1154,6 +1221,18 @@ if len(response) > MAX_RESPONSE_SIZE:
 
 Every plugin repo **should** have a GitHub Actions CI pipeline.
 
+### Verification expectations
+
+Use a test-first mindset for plugin work:
+
+1. Write the failing test or live-check first
+2. Implement the smallest change that makes it pass
+3. Verify with live or integration evidence
+
+For MCP plugins, "verification" means more than unit tests. It includes schema validation,
+authenticated live tool calls, auth rejection, destructive-op gating, and pagination/help-tool
+contract checks where applicable.
+
 ### Minimum CI jobs
 
 ```yaml
@@ -1184,6 +1263,9 @@ jobs:
     # Python: uv audit
     # TypeScript: npm audit
     # Rust: cargo audit
+
+  contract-drift:
+    # Verify schema, help output, and SKILL.md stay in sync
 ```
 
 ### Version sync check
@@ -1199,6 +1281,17 @@ if [ "$PYPROJECT_VERSION" != "$PLUGIN_VERSION" ]; then
   exit 1
 fi
 ```
+
+### Contract drift checks
+
+CI should fail when the plugin's public contract disagrees with itself. At minimum, compare:
+
+- exposed MCP schema
+- help tool output
+- `skills/<service>/SKILL.md` action/subaction reference
+
+If one says an action exists and another omits it, that is a contract bug. The goal is to catch
+drift before release, not after Claude discovers inconsistent behavior at runtime.
 
 ---
 
@@ -1219,6 +1312,17 @@ async def get_item(item_id: str) -> str:
     """Details for a specific item."""
     return json.dumps(await fetch_item(item_id))
 ```
+
+### When not to expose a resource
+
+Do **not** expose a resource just because the data exists. Prefer tools instead when:
+
+- the data is large, frequently changing, or expensive to serialize
+- access should be filtered, paginated, or parameterized
+- the data includes secrets or sensitive operational detail
+- the data is only meaningful as the result of an action with explicit user intent
+
+Resources should stay small, read-only, and obviously useful as passive context.
 
 ```typescript
 // TypeScript
@@ -1343,6 +1447,25 @@ Our servers use `http` with bearer auth. Only non-sensitive `userConfig` values 
 > it must be non-sensitive. This is safe because the token only grants access to the local
 > MCP server — the real service credentials stay in `.env` at `chmod 600`.
 
+### Threat model and trust boundaries
+
+Treat the MCP bearer token and the upstream service credential as **different trust domains**:
+
+- `MY_SERVICE_MCP_TOKEN`
+  - Grants access only to the plugin's MCP HTTP endpoint
+  - Does **not** directly authenticate to the upstream service
+  - Is acceptable as `sensitive: false` because `.mcp.json` must interpolate it into the
+    `Authorization` header for local tool calls
+- `MY_SERVICE_API_KEY` / service credentials
+  - Grant direct access to the upstream service or API
+  - Must remain `sensitive: true`
+  - Must never appear in `.mcp.json`, skill text, logs, or generated examples
+
+The trust boundary is the MCP server itself. Claude Code authenticates to the MCP server with
+`MY_SERVICE_MCP_TOKEN`; the MCP server then uses the upstream credential from `.env` to call the
+real service. This separation limits blast radius: exposing the MCP token is materially less severe
+than exposing the upstream service credential.
+
 ---
 
 ### `hooks/hooks.json`
@@ -1413,7 +1536,7 @@ declare -A MANAGED=(
   [MY_SERVICE_URL]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_URL:-}"
   [MY_SERVICE_API_KEY]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_API_KEY:-}"
   [MY_SERVICE_MCP_URL]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_MCP_URL:-}"
-  [MCP_BEARER_TOKEN]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_MCP_TOKEN:-}"
+  [MY_SERVICE_MCP_TOKEN]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_MCP_TOKEN:-}"
 )
 
 touch "$ENV_FILE"
@@ -1438,8 +1561,8 @@ done
 # Fail if bearer token is not set — do NOT auto-generate.
 # Auto-generated tokens cause a mismatch: the server reads the generated token
 # but Claude Code sends the (empty) userConfig value. Every MCP call returns 401.
-if ! grep -q "^MCP_BEARER_TOKEN=.\+" "$ENV_FILE" 2>/dev/null; then
-  echo "sync-env: ERROR — MCP_BEARER_TOKEN is not set." >&2
+if ! grep -q "^MY_SERVICE_MCP_TOKEN=.\+" "$ENV_FILE" 2>/dev/null; then
+  echo "sync-env: ERROR — MY_SERVICE_MCP_TOKEN is not set." >&2
   echo "  Generate one:  openssl rand -hex 32" >&2
   echo "  Then paste it into the plugin's userConfig MCP token field." >&2
   exit 1
@@ -1456,7 +1579,7 @@ for bak in "${baks[@]:3}"; do rm -f "$bak"; done
 **Key rules:**
 - Map each userConfig key → the `.env` key Docker Compose and the server read
 - Skip empty values — avoids clobbering existing `.env` when a field isn't filled in
-- **Fail if `MCP_BEARER_TOKEN` is empty** — auto-generation causes a token mismatch (server has one token, client sends another → silent 401). Require the user to generate and paste the token into userConfig.
+- **Fail if `MY_SERVICE_MCP_TOKEN` is empty** — auto-generation causes a token mismatch (server has one token, client sends another → silent 401). Require the user to generate and paste the token into userConfig.
 - Use `awk` for replacement, not `sed` — values containing `|`, `&`, `/`, or `\` are handled safely
 - Use `flock` to serialize concurrent sessions — prevents `.env` corruption when two tabs start simultaneously
 - Backup before every write, prune to 3 most recent, chmod 600 on all
@@ -2088,6 +2211,10 @@ setup:
 gen-token:
     @openssl rand -hex 32
 
+# Check contract drift between schema, help tool, and skill docs
+check-contract:
+    bash scripts/lint-plugin.sh
+
 # ── Cleanup ──────────────────────────────────────────────────────────────────
 
 # Remove build artifacts and caches
@@ -2457,7 +2584,7 @@ Codex plugins use `.codex-plugin/` instead of `.claude-plugin/`. To support both
 a single repo, create both manifests:
 
 ```
-repo-root/
+my-service-mcp/
 ├── .claude-plugin/
 │   └── plugin.json           # Claude Code manifest
 ├── .codex-plugin/
@@ -2620,8 +2747,17 @@ npx mcporter list
 
 ### Each server must have a `tests/test_live.sh`
 
-This script performs a full end-to-end live test of every tool, action, subaction, and resource.
-It must run against a live server instance (not mocked).
+This script performs a full end-to-end live test of every required tool, action, subaction, and
+resource contract. It must run against a live server instance (not mocked).
+
+**Pass/fail contract:**
+- Fail if the required domain tool is missing
+- Fail if the required help tool is missing or malformed
+- Fail if unauthenticated `GET /health` does not work
+- Fail if unauthenticated `/mcp` is not rejected
+- Fail if a destructive action succeeds without confirmation
+- Fail if list responses omit or malform pagination metadata (`items`, `total`, `limit`, `offset`, `has_more`)
+- Fail if required actions or subactions declared by the schema are missing from help output
 
 ```bash
 #!/usr/bin/env bash
@@ -2652,11 +2788,17 @@ EXTERNAL_SCHEMA=$(npx mcporter list "$SERVER_NAME" --http-url "$MCP_URL" \
 TOOL_COUNT=$(echo "$EXTERNAL_SCHEMA" | jq '.tools | length' 2>/dev/null || echo 0)
 echo "  Tools exposed: $TOOL_COUNT"
 
-# Verify expected tool exists and has expected actions in schema
+# Verify the required tool pair exists
 if echo "$EXTERNAL_SCHEMA" | jq -e '.tools[] | select(.name == "my_service")' > /dev/null 2>&1; then
   pass "schema/tool-exists: my_service"
 else
   fail "schema/tool-exists" "my_service tool not found in external schema"
+fi
+
+if echo "$EXTERNAL_SCHEMA" | jq -e '.tools[] | select(.name == "my_service_help")' > /dev/null 2>&1; then
+  pass "schema/tool-exists: my_service_help"
+else
+  fail "schema/tool-exists" "my_service_help tool not found in external schema"
 fi
 
 # ── Health check ───────────────────────────────────────────────────────────────
@@ -2673,11 +2815,48 @@ result=$(npx mcporter call "${SERVER_NAME}.my_service" \
   --http-url "$MCP_URL" --header "$AUTH_HEADER" action=list 2>/dev/null) \
   && pass "action/list" || fail "action/list" "call failed"
 
+echo "$result" | jq -e '
+  has("items") and
+  has("total") and
+  has("limit") and
+  has("offset") and
+  has("has_more") and
+  (.items | type == "array") and
+  (.total | type == "number") and
+  (.limit | type == "number") and
+  (.offset | type == "number") and
+  (.has_more | type == "boolean")
+' > /dev/null 2>&1 \
+  && pass "action/list-pagination-shape" \
+  || fail "action/list-pagination-shape" "missing or malformed pagination metadata"
+
 header "Tool: my_service — action=status"
 
 result=$(npx mcporter call "${SERVER_NAME}.my_service" \
   --http-url "$MCP_URL" --header "$AUTH_HEADER" action=status 2>/dev/null) \
   && pass "action/status" || fail "action/status" "call failed"
+
+header "Tool: my_service_help"
+
+HELP=$(npx mcporter call "${SERVER_NAME}.my_service_help" \
+  --http-url "$MCP_URL" --header "$AUTH_HEADER" 2>/dev/null) \
+  && pass "help/overview" || fail "help/overview" "call failed"
+
+printf '%s' "$HELP" | grep -q "list" \
+  && pass "help/includes-action-list" || fail "help/includes-action-list" "list action missing"
+
+printf '%s' "$HELP" | grep -q "delete" \
+  && pass "help/includes-action-delete" || fail "help/includes-action-delete" "delete action missing"
+
+printf '%s' "$HELP" | grep -Eq "DESTRUCTIVE|destructive" \
+  && pass "help/marks-destructive" || fail "help/marks-destructive" "destructive marker missing"
+
+HELP_UPDATE=$(npx mcporter call "${SERVER_NAME}.my_service_help" \
+  --http-url "$MCP_URL" --header "$AUTH_HEADER" action=update 2>/dev/null) \
+  && pass "help/update-detail" || fail "help/update-detail" "detail call failed"
+
+printf '%s' "$HELP_UPDATE" | grep -q "enable" \
+  && pass "help/includes-subaction-enable" || fail "help/includes-subaction-enable" "enable subaction missing"
 
 header "Tool: my_service — action=create + get + update + delete (lifecycle)"
 
@@ -2696,14 +2875,22 @@ if [ -n "$CREATED_ID" ]; then
     --http-url "$MCP_URL" --header "$AUTH_HEADER" action=update "id=$CREATED_ID" subaction=enable > /dev/null 2>&1 \
     && pass "action/update/enable" || fail "action/update/enable" "failed"
 
+  if npx mcporter call "${SERVER_NAME}.my_service" \
+    --http-url "$MCP_URL" --header "$AUTH_HEADER" action=delete "id=$CREATED_ID" > /dev/null 2>&1; then
+    fail "action/delete-blocked-without-confirm" "destructive action succeeded without confirmation"
+  else
+    pass "action/delete-blocked-without-confirm"
+  fi
+
   npx mcporter call "${SERVER_NAME}.my_service" \
-    --http-url "$MCP_URL" --header "$AUTH_HEADER" action=delete "id=$CREATED_ID" > /dev/null 2>&1 \
-    && pass "action/delete" || fail "action/delete" "failed"
+    --http-url "$MCP_URL" --header "$AUTH_HEADER" action=delete "id=$CREATED_ID" confirm=true > /dev/null 2>&1 \
+    && pass "action/delete-confirmed" || fail "action/delete-confirmed" "failed with confirm=true"
 else
   fail "action/create" "no id in response: $CREATE"
   skip "action/get" "create failed"
   skip "action/update/enable" "create failed"
-  skip "action/delete" "create failed"
+  skip "action/delete-blocked-without-confirm" "create failed"
+  skip "action/delete-confirmed" "create failed"
 fi
 
 header "Tool: my_service — action=search"
@@ -2767,7 +2954,8 @@ EXPECTED = {
     "my_service": {
         "actions": ["list", "get", "create", "update", "delete", "search", "status", "logs"],
         "subactions": {"update": ["enable", "disable", "reload"]},
-    }
+    },
+    "my_service_help": {},
 }
 
 for tool_name, spec in EXPECTED.items():
@@ -2779,6 +2967,12 @@ for tool_name, spec in EXPECTED.items():
     # Further schema validation...
 EOF
 ```
+
+At minimum, the schema comparison step should assert:
+- exactly two tools are exposed: the domain tool and the help tool
+- the domain tool advertises every required action and destructive `confirm` support
+- the help tool exists and can describe each action with parameters and subactions
+- list actions expose pagination parameters
 
 ### Generate CLI for a running server
 
@@ -2824,6 +3018,17 @@ Run before every commit to a plugin repo:
 claude plugin validate .
 ```
 
+### No unverified claims
+
+Plugin work is **not complete** until all required verification passes:
+
+- `claude plugin validate .`
+- `npx skills-ref validate skills/`
+- CI checks
+- `tests/test_live.sh`
+
+Do not claim a plugin is finished, working, or ready to publish until those checks succeed.
+
 Common errors and fixes:
 
 | Error | Fix |
@@ -2832,6 +3037,30 @@ Common errors and fixes:
 | `userConfig.*.title: Invalid input` | Add `"title": "..."` — required, undocumented |
 | Hook format rejected | Wrap in `{"description": "...", "hooks": {...}}` — bare arrays not accepted |
 | `${user_config.*}` not substituting | Field must be `sensitive: false` for `.mcp.json` substitution |
+
+### Turn guidance into enforcement
+
+Add a repo-local scaffold, template, and lint layer so plugin quality does not depend on authors
+remembering the guide:
+
+- `scripts/scaffold-plugin.sh`
+  - Creates `.claude-plugin/`, `.codex-plugin/`, `.mcp.json`, hooks, `skills/`, `tests/`, and
+    `.env.example` from a canonical template
+  - Uses only `MY_SERVICE_*` and `MY_SERVICE_MCP_*` env variable patterns
+- `templates/plugin/`
+  - Contains the canonical starting point for new plugins
+  - Defines the required tool pair, manifest shape, hooks, env naming, and live-test skeleton
+- `scripts/lint-plugin.sh`
+  - Fails on generic env vars like `MCP_BEARER_TOKEN`
+  - Validates required manifest fields and `.claude-plugin` / `.codex-plugin` parity
+  - Verifies the required tool pair (`my_service`, `my_service_help`)
+  - Verifies destructive `confirm` support is documented and tested
+  - Verifies list responses include pagination metadata
+  - Verifies response-shape rules for list and non-list actions
+  - Verifies schema/help/skill-doc contract drift
+
+The goal is to move as many of these rules as possible from prose into repeatable checks and
+generate new plugins from a single canonical template rather than from stale copies of old repos.
 
 ---
 
@@ -2849,7 +3078,7 @@ Claude Code plugin install
          ▼ SessionStart
   sync-env.sh
   ├── Writes MY_SERVICE_URL, MY_SERVICE_API_KEY → .env
-  ├── Writes MCP_BEARER_TOKEN → .env (fails if token not set in userConfig)
+  ├── Writes MY_SERVICE_MCP_TOKEN → .env (fails if token not set in userConfig)
   └── chmod 600 .env
          │
          ├─────────────────────────────────────────────────────┐
@@ -2959,8 +3188,11 @@ scratch — these tools enforce all the conventions in this guide.
 ### Quality
 - [ ] **`Justfile`** — standard recipes: dev, test, lint, fmt, build, up, down, health, test-live
 - [ ] **`.pre-commit-config.yaml`** — language linter + `skills-ref validate`
-- [ ] **`.github/workflows/ci.yml`** — lint, typecheck, test, version-sync, audit
-- [ ] **`tests/test_live.sh`** — mcporter-based, tests all actions/subactions/resources, schema, auth rejection
+- [ ] **`.github/workflows/ci.yml`** — lint, typecheck, test, version-sync, audit, contract-drift
+- [ ] **`tests/test_live.sh`** — mcporter-based, tests required tool pair, help output contract, auth rejection, destructive confirmation gate, and pagination metadata
+- [ ] **TDD + verification discipline** — start from a failing test/check, implement, then prove behavior with live or integration evidence
+- [ ] **`scripts/lint-plugin.sh`** — validates naming, manifests, response shapes, and contract drift
+- [ ] **`templates/plugin/`** — canonical scaffold source for new plugins
 
 ### Publish
 - [ ] **`claude plugin validate .`** — must pass with zero errors

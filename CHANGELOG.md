@@ -9,9 +9,17 @@ All notable changes to this project will be documented in this file.
 - `swag-mcp` external MCP server plugin for NGINX reverse proxy management
 - `gotify-mcp` external MCP server plugin (replaces local gotify HTTP plugin)
 - Detailed plugin setup guide for MCP-server-backed plugins
+- Engineering principles section: Research → Plan → Validate → Implement loop
+- Context and token efficiency section: tool count, pagination, schema surface area guidance
 
 ### Fixed
 - Marketplace `source` field for external GitHub plugins now uses correct object format `{"source": "github", "repo": "owner/repo"}`
+- Plugin setup guide: fix token var name (`MCP_BEARER_TOKEN` → `MY_SERVICE_MCP_TOKEN`)
+- Plugin setup guide: clarify stdio transport has no bearer auth (HTTP-only)
+- Plugin setup guide: fix directory name placeholder (`repo-root/` → `my-service-mcp/`)
+
+### Changed
+- Plugin setup guide: destructive tool actions now require `confirm=true` parameter
 
 ## [1.1.2] - 2026-03-29
 
