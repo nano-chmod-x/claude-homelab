@@ -144,3 +144,7 @@ desktop.ini
 
 # Script Debug Files
 skills/*/scripts/*_debug.json
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
