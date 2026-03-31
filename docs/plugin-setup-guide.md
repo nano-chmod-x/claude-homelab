@@ -447,14 +447,15 @@ Set MY_SERVICE_MCP_TOKEN to a secure random token, or set MY_SERVICE_MCP_NO_AUTH
 Generate a token with: openssl rand -hex 32
 ```
 
-The `sync-env.sh` hook generates a token automatically if one is not present in `.env`:
+The `sync-env.sh` hook **fails with a clear error** if `MCP_BEARER_TOKEN` is not set — it does
+not auto-generate tokens. Auto-generation causes a token mismatch: the server reads the generated
+token but Claude Code sends the (empty) userConfig value, resulting in silent 401 errors on every
+MCP call. Users must generate a token and paste it into the plugin's userConfig field:
 
 ```bash
-# In sync-env.sh, after writing userConfig values:
-if ! grep -q "^MY_SERVICE_MCP_TOKEN=" "$ENV_FILE" 2>/dev/null; then
-  generated=$(openssl rand -hex 32)
-  echo "MY_SERVICE_MCP_TOKEN=${generated}" >> "$ENV_FILE"
-fi
+# Generate a token:
+openssl rand -hex 32
+# Then paste it into the plugin's MCP token userConfig field.
 ```
 
 ### Bearer token enforcement by language
@@ -1376,11 +1377,6 @@ The wrapper object with `"description"` and `"hooks"` is required. Bare arrays a
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/fix-env-perms.sh",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/ensure-gitignore.sh",
-            "timeout": 5
           }
         ]
       }
@@ -1395,8 +1391,10 @@ The wrapper object with `"description"` and `"hooks"` is required. Bare arrays a
 
 ### `hooks/scripts/sync-env.sh`
 
-Runs at `SessionStart`. Maps `CLAUDE_PLUGIN_OPTION_*` → `.env` keys. Generates
-`MY_SERVICE_MCP_TOKEN` if absent. Keeps max 3 backups, all chmod 600.
+Runs at `SessionStart`. Maps `CLAUDE_PLUGIN_OPTION_*` → `.env` keys. Fails if bearer token
+is not set (no auto-generation — avoids token mismatch with userConfig). Uses `flock` to
+prevent concurrent session races. Uses `awk` for value replacement (not `sed` — avoids
+pipe-delimiter injection on values containing `|`). Keeps max 3 backups, all chmod 600.
 
 ```bash
 #!/usr/bin/env bash
@@ -1404,41 +1402,52 @@ set -euo pipefail
 
 ENV_FILE="${CLAUDE_PLUGIN_ROOT}/.env"
 BACKUP_DIR="${CLAUDE_PLUGIN_ROOT}/backups"
+LOCK_FILE="${CLAUDE_PLUGIN_ROOT}/.env.lock"
 mkdir -p "$BACKUP_DIR"
+
+# Serialize concurrent sessions (two tabs starting at the same time)
+exec 9>"$LOCK_FILE"
+flock -w 10 9 || { echo "sync-env: failed to acquire lock after 10s" >&2; exit 1; }
 
 declare -A MANAGED=(
   [MY_SERVICE_URL]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_URL:-}"
   [MY_SERVICE_API_KEY]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_API_KEY:-}"
   [MY_SERVICE_MCP_URL]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_MCP_URL:-}"
-  [MY_SERVICE_MCP_TOKEN]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_MCP_TOKEN:-}"
+  [MCP_BEARER_TOKEN]="${CLAUDE_PLUGIN_OPTION_MY_SERVICE_MCP_TOKEN:-}"
 )
 
 touch "$ENV_FILE"
 
+# Backup before writing (max 3 retained)
 if [ -s "$ENV_FILE" ]; then
   cp "$ENV_FILE" "${BACKUP_DIR}/.env.bak.$(date +%s)"
 fi
 
+# Write managed keys — awk handles arbitrary values safely (no delimiter injection)
 for key in "${!MANAGED[@]}"; do
   value="${MANAGED[$key]}"
   [ -z "$value" ] && continue
   if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
-    escaped_value=$(printf '%s\n' "$value" | sed 's/[&/\|]/\\&/g')
-    sed -i "s|^${key}=.*|${key}=${escaped_value}|" "$ENV_FILE"
+    awk -v k="$key" -v v="$value" '$0 ~ "^"k"=" { print k"="v; next } { print }' \
+      "$ENV_FILE" > "${ENV_FILE}.tmp" && mv "${ENV_FILE}.tmp" "$ENV_FILE"
   else
     echo "${key}=${value}" >> "$ENV_FILE"
   fi
 done
 
-# Auto-generate MY_SERVICE_MCP_TOKEN if not yet set
-if ! grep -q "^MY_SERVICE_MCP_TOKEN=" "$ENV_FILE" 2>/dev/null; then
-  generated=$(openssl rand -hex 32)
-  echo "MY_SERVICE_MCP_TOKEN=${generated}" >> "$ENV_FILE"
-  echo "sync-env: generated MY_SERVICE_MCP_TOKEN (update plugin userConfig to match)" >&2
+# Fail if bearer token is not set — do NOT auto-generate.
+# Auto-generated tokens cause a mismatch: the server reads the generated token
+# but Claude Code sends the (empty) userConfig value. Every MCP call returns 401.
+if ! grep -q "^MCP_BEARER_TOKEN=.\+" "$ENV_FILE" 2>/dev/null; then
+  echo "sync-env: ERROR — MCP_BEARER_TOKEN is not set." >&2
+  echo "  Generate one:  openssl rand -hex 32" >&2
+  echo "  Then paste it into the plugin's userConfig MCP token field." >&2
+  exit 1
 fi
 
 chmod 600 "$ENV_FILE"
 
+# Prune old backups
 mapfile -t baks < <(ls -t "${BACKUP_DIR}"/.env.bak.* 2>/dev/null)
 for bak in "${baks[@]}"; do chmod 600 "$bak"; done
 for bak in "${baks[@]:3}"; do rm -f "$bak"; done
@@ -1447,15 +1456,19 @@ for bak in "${baks[@]:3}"; do rm -f "$bak"; done
 **Key rules:**
 - Map each userConfig key → the `.env` key Docker Compose and the server read
 - Skip empty values — avoids clobbering existing `.env` when a field isn't filled in
-- Auto-generate `MY_SERVICE_MCP_TOKEN` if absent — users who don't fill in the token field still get a secure default
+- **Fail if `MCP_BEARER_TOKEN` is empty** — auto-generation causes a token mismatch (server has one token, client sends another → silent 401). Require the user to generate and paste the token into userConfig.
+- Use `awk` for replacement, not `sed` — values containing `|`, `&`, `/`, or `\` are handled safely
+- Use `flock` to serialize concurrent sessions — prevents `.env` corruption when two tabs start simultaneously
 - Backup before every write, prune to 3 most recent, chmod 600 on all
 
 ---
 
 ### `hooks/scripts/fix-env-perms.sh`
 
-Identical across all plugins. Re-enforces chmod 600 on `.env` and backups whenever a file-touching
-tool runs that might have touched `.env`.
+Identical across all plugins. Re-enforces chmod 600 on `.env` and backups unconditionally
+whenever any file-touching tool runs. The PostToolUse matcher (`Write|Edit|MultiEdit|Bash`)
+already scopes this to relevant tools — no need to parse stdin or match `.env` in the command
+string (which can be bypassed via variable indirection).
 
 ```bash
 #!/usr/bin/env bash
@@ -1464,37 +1477,25 @@ set -euo pipefail
 ENV_FILE="${CLAUDE_PLUGIN_ROOT}/.env"
 [ -f "$ENV_FILE" ] || exit 0
 
-input=$(cat)
-tool_name=$(echo "$input" | jq -r '.tool_name // ""')
-tool_input=$(echo "$input" | jq -r '.tool_input // {}')
+# Read and discard stdin (PostToolUse hooks receive JSON on stdin)
+cat > /dev/null
 
-touched_env=false
-
-case "$tool_name" in
-  Write|Edit|MultiEdit)
-    file_path=$(echo "$tool_input" | jq -r '.file_path // ""')
-    [[ "$file_path" == *".env"* ]] && touched_env=true
-    ;;
-  Bash)
-    command=$(echo "$tool_input" | jq -r '.command // ""')
-    [[ "$command" == *".env"* ]] && touched_env=true
-    ;;
-esac
-
-if [ "$touched_env" = true ]; then
-  chmod 600 "$ENV_FILE"
-  for bak in "${CLAUDE_PLUGIN_ROOT}/backups"/.env.bak.*; do
-    [ -f "$bak" ] && chmod 600 "$bak"
-  done
-fi
+# Unconditionally enforce permissions — the PostToolUse matcher already limits
+# this to Write|Edit|MultiEdit|Bash. Checking whether the command string
+# contains ".env" is a heuristic that misses variable-based paths like:
+#   f=".env"; echo "KEY=val" >> "$f"
+chmod 600 "$ENV_FILE"
+for bak in "${CLAUDE_PLUGIN_ROOT}/backups"/.env.bak.*; do
+  [ -f "$bak" ] && chmod 600 "$bak"
+done
 ```
 
 ---
 
 ### `hooks/scripts/ensure-gitignore.sh`
 
-Identical across all plugins. Appends required gitignore patterns if missing. Runs at both
-`SessionStart` and `PostToolUse`.
+Identical across all plugins. Appends required gitignore patterns if missing. Runs at
+`SessionStart` only — the patterns are static and do not need per-tool-call verification.
 
 ```bash
 #!/usr/bin/env bash
@@ -1850,7 +1851,7 @@ MY_SERVICE_API_KEY=your_api_key_here
 MY_SERVICE_MCP_HOST=0.0.0.0
 MY_SERVICE_MCP_PORT=9000
 MY_SERVICE_MCP_TRANSPORT=http          # "http" (default) or "stdio"
-MY_SERVICE_MCP_TOKEN=                  # auto-generated by sync-env.sh if absent
+MY_SERVICE_MCP_TOKEN=                  # required — generate with: openssl rand -hex 32
 MY_SERVICE_MCP_NO_AUTH=false           # true = disable bearer auth (proxy-managed only)
 MY_SERVICE_MCP_LOG_LEVEL=INFO
 
@@ -2848,7 +2849,7 @@ Claude Code plugin install
          ▼ SessionStart
   sync-env.sh
   ├── Writes MY_SERVICE_URL, MY_SERVICE_API_KEY → .env
-  ├── Writes MY_SERVICE_MCP_TOKEN → .env (or auto-generates if absent)
+  ├── Writes MCP_BEARER_TOKEN → .env (fails if token not set in userConfig)
   └── chmod 600 .env
          │
          ├─────────────────────────────────────────────────────┐
@@ -2927,7 +2928,7 @@ scratch — these tools enforce all the conventions in this guide.
 
 ### Hooks
 - [ ] **`hooks/hooks.json`** — SessionStart + PostToolUse structure
-- [ ] **`hooks/scripts/sync-env.sh`** — maps `CLAUDE_PLUGIN_OPTION_*` → `.env`; auto-generates `MY_SERVICE_MCP_TOKEN` if absent
+- [ ] **`hooks/scripts/sync-env.sh`** — maps `CLAUDE_PLUGIN_OPTION_*` → `.env` via `awk`; fails if bearer token missing (no auto-gen)
 - [ ] **`hooks/scripts/fix-env-perms.sh`** — enforces chmod 600 on `.env` (identical across plugins)
 - [ ] **`hooks/scripts/ensure-gitignore.sh`** — ensures required patterns (identical across plugins)
 
