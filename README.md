@@ -227,10 +227,10 @@ load_service_credentials "plex" "PLEX_URL" "PLEX_TOKEN"
 ```
 
 `load-env.sh` is installed to `~/.claude-homelab/load-env.sh` by both install paths:
-- **Bash path**: `setup-symlinks.sh` copies it from `lib/load-env.sh`
+- **Bash path**: `setup-symlinks.sh` copies it from `scripts/load-env.sh`
 - **Plugin path**: `setup-creds.sh` copies it (from the repo if available, or fetches from GitHub)
 
-The canonical source is `lib/load-env.sh` in this repo. If you need to update it, edit the source there and re-run `setup-symlinks.sh` (bash path) or `setup-creds.sh` (plugin path).
+The canonical source is `scripts/load-env.sh` in this repo. If you need to update it, edit the source there and re-run `setup-symlinks.sh` (bash path) or `setup-creds.sh` (plugin path).
 
 ---
 
@@ -588,7 +588,7 @@ The bash path is for users who prefer a traditional install, want live-updating 
 ```
 
 It also:
-- Copies `lib/load-env.sh` → `~/.claude-homelab/load-env.sh`
+- Copies `scripts/load-env.sh` → `~/.claude-homelab/load-env.sh`
 - Creates `~/.claude-homelab/.env` from `.env.example` if the file doesn't exist yet
 - Skips existing valid symlinks (safe to re-run)
 - Warns about conflicts without overwriting
@@ -907,3 +907,17 @@ find ~/.claude/commands -maxdepth 1 -type l ! -e -delete
 **Repository:** https://github.com/jmagar/claude-homelab
 **Version:** 1.1.0
 **Last Updated:** 2026-03-21
+
+## MCP Plugin Repositories
+
+This marketplace also references standalone MCP plugin repositories:
+
+- [jmagar/axon](https://github.com/jmagar/axon)
+- [jmagar/gotify-mcp](https://github.com/jmagar/gotify-mcp)
+- [jmagar/unraid-mcp](https://github.com/jmagar/unraid-mcp)
+- [jmagar/overseerr-mcp](https://github.com/jmagar/overseerr-mcp)
+- [jmagar/unifi-mcp](https://github.com/jmagar/unifi-mcp)
+- [jmagar/syslog-mcp](https://github.com/jmagar/syslog-mcp)
+- [jmagar/arcane-mcp](https://github.com/jmagar/arcane-mcp)
+- [jmagar/synapse-mcp](https://github.com/jmagar/synapse-mcp)
+- [jmagar/swag-mcp](https://github.com/jmagar/swag-mcp)

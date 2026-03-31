@@ -62,7 +62,7 @@ This repository provides production-ready integrations for self-hosted homelab s
 
 - **homelab-core plugin** — agents, commands, setup wizard, health dashboard (repo root IS the plugin)
 - **Service plugins** (`service-plugins/`) — 21 service plugins, each independently installable (22 total including homelab-core)
-- **Shared library** (`lib/load-env.sh`) — credential loading, installed to `~/.claude-homelab/`
+- **Shared library** (`scripts/load-env.sh`) — credential loading, installed to `~/.claude-homelab/`
 
 ## Repository Structure
 
@@ -74,9 +74,6 @@ claude-homelab/
 ├── .claude-plugin/
 │   ├── marketplace.json             # Plugin catalog (23 plugins)
 │   └── plugin.json                  # homelab-core manifest (root IS the plugin)
-│
-├── lib/
-│   └── load-env.sh                  # Credential loader — installed to ~/.claude-homelab/
 │
 ├── agents/                          # homelab-core agents (4 specialist agents)
 │   ├── agentic-orchestrator.md
@@ -139,7 +136,7 @@ Bash path only — plugin path uses `~/.claude/plugins/cache/`, no symlinks.
 
 ~/.claude-homelab/
 ├── .env                         # Credentials (chmod 600, never committed)
-└── load-env.sh                  # Copied from lib/load-env.sh
+└── load-env.sh                  # Copied from scripts/load-env.sh
 ```
 
 ### How Slash Commands Work
@@ -208,7 +205,7 @@ The setup script:
 - Symlinks all `service-plugins/*/` → `~/.claude/skills/`
 - Symlinks all `agents/*.md` → `~/.claude/agents/`
 - Symlinks all `commands/` files/dirs → `~/.claude/commands/`
-- Copies `lib/load-env.sh` → `~/.claude-homelab/load-env.sh`
+- Copies `scripts/load-env.sh` → `~/.claude-homelab/load-env.sh`
 - Creates `~/.claude-homelab/.env` from `.env.example` if missing
 - Skips existing valid symlinks, never overwrites `.env`
 
@@ -229,7 +226,7 @@ The setup script:
 **Pattern for all scripts:**
 ```bash
 # Bash scripts
-source "$REPO_ROOT/lib/load-env.sh"
+source "$REPO_ROOT/scripts/load-env.sh"
 load_env_file || exit 1
 validate_env_vars "SERVICE_URL" "SERVICE_API_KEY"
 
@@ -297,9 +294,9 @@ The full template is in `.env.example`. It covers all 21 service plugins grouped
 - [ ] No credentials in code, docs, or commit history
 - [ ] `.env.example` has placeholder values only
 
-### 2. Shared Library (lib/load-env.sh)
+### 2. Shared Library (scripts/load-env.sh)
 
-The `lib/load-env.sh` library provides centralized environment loading:
+The `scripts/load-env.sh` library provides centralized environment loading:
 
 ```bash
 # Loads ~/.claude-homelab/.env by default (or an explicit override)
@@ -334,10 +331,9 @@ load_service_credentials "service-name" "URL_VAR" "API_KEY_VAR"
 - Can be invoked via Claude Code
 - Document common workflows
 
-**Shared Code** - Common utilities in `lib/`:
-- Bash libraries for credential loading
-- Python utilities (future)
-- JavaScript/Node utilities (future)
+**Shared Code** - Common utilities in `scripts/`:
+- `load-env.sh` — credential loading library
+- Check scripts — Docker security, env baking, ignore files, outdated deps
 
 ### 4. Git Workflow
 
@@ -428,7 +424,7 @@ See `skills/CLAUDE.md` for detailed skill development guidelines.
    - Include workflow decision trees
 
 4. **Implement scripts:**
-   - Use `lib/load-env.sh` for credentials
+   - Use `scripts/load-env.sh` for credentials
    - Return JSON output
    - Include error handling
    - Support `--help` flag

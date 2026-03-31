@@ -1,0 +1,7 @@
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      run: npx biome check --write .
+    test:
+      run: npm test -- --runInBand

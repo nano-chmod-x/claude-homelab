@@ -39,8 +39,8 @@ mkdir -p "$HOMELAB_DIR"
 log_info "Credentials directory: $HOMELAB_DIR"
 
 # Install load-env.sh if repo is available
-if [[ -n "$REPO_ROOT" && -f "$REPO_ROOT/lib/load-env.sh" ]]; then
-    cp "$REPO_ROOT/lib/load-env.sh" "$HOMELAB_DIR/load-env.sh"
+if [[ -n "$REPO_ROOT" && -f "$REPO_ROOT/scripts/load-env.sh" ]]; then
+    cp "$REPO_ROOT/scripts/load-env.sh" "$HOMELAB_DIR/load-env.sh"
     log_success "Installed load-env.sh"
 fi
 

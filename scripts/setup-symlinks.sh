@@ -148,7 +148,7 @@ main() {
     mkdir -p "$homelab_dir"
 
     # Install load-env.sh
-    cp "$REPO_ROOT/lib/load-env.sh" "$homelab_dir/load-env.sh"
+    cp "$REPO_ROOT/scripts/load-env.sh" "$homelab_dir/load-env.sh"
     log_success "Installed: $homelab_dir/load-env.sh"
 
     # Stub .env from .env.example only if not already present

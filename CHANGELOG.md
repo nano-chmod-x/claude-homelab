@@ -57,7 +57,7 @@ All notable changes to this project will be documented in this file.
 - Migrate all skills to `service-plugins/` structure
 - Standardize all skill scripts and SKILL.md files
 - Move `.env` location to `~/.claude-homelab/`
-- Env loading standardized via `lib/load-env.sh`
+- Env loading standardized via `scripts/load-env.sh`
 
 ### Removed
 - Deprecated standalone skills
@@ -70,6 +70,6 @@ All notable changes to this project will be documented in this file.
 - 22-plugin catalog covering media, infrastructure, development, and utilities
 - Agents: `agentic-orchestrator`, `exa-specialist`, `firecrawl-specialist`, `notebooklm-specialist`
 - Commands: `/agentic-research`, `/homelab:*`, `/notebooklm:*`
-- Shared credential library (`lib/load-env.sh`)
+- Shared credential library (`scripts/load-env.sh`)
 - Install scripts: `install.sh`, `setup-symlinks.sh`, `verify.sh`
 - Security sanitization for public release

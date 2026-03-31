@@ -9,23 +9,25 @@ Claude Code plugins in this ecosystem (`../workspace/gotify-mcp`, `../workspace/
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
-2. [Directory Layout](#directory-layout)
-3. [`.cache/` Convention](#cache-convention)
-4. [Language Toolchain Standards](#language-toolchain-standards)
-5. [HTTP Security — Bearer Tokens](#http-security--bearer-tokens)
-6. [Tool Design — Action + Subaction Pattern](#tool-design--action--subaction-pattern)
-7. [Code Architecture](#code-architecture)
-8. [Destructive Operations — Confirmation Gate](#destructive-operations--confirmation-gate)
-9. [Middleware & Server Hardening](#middleware--server-hardening)
-10. [CI/CD Pipeline](#cicd-pipeline)
-11. [MCP Resources](#mcp-resources)
-12. [File-by-File Reference](#file-by-file-reference)
+2. [Deployment Modes — Local & Docker](#deployment-modes--local--docker)
+3. [Directory Layout](#directory-layout)
+4. [`.cache/` Convention](#cache-convention)
+5. [Language Toolchain Standards](#language-toolchain-standards)
+6. [HTTP Security — Bearer Tokens](#http-security--bearer-tokens)
+7. [Tool Design — Action + Subaction Pattern](#tool-design--action--subaction-pattern)
+8. [Code Architecture](#code-architecture)
+9. [Destructive Operations — Confirmation Gate](#destructive-operations--confirmation-gate)
+10. [Middleware & Server Hardening](#middleware--server-hardening)
+11. [CI/CD Pipeline](#cicd-pipeline)
+12. [MCP Resources](#mcp-resources)
+13. [File-by-File Reference](#file-by-file-reference)
     - [plugin.json](#claudepluginpluginjson)
+    - [.app.json](#appjson)
     - [.mcp.json](#mcpjson)
     - [hooks/hooks.json](#hookshooksjson)
     - [hooks/scripts/sync-env.sh](#hooksscriptssync-envsh)
     - [hooks/scripts/fix-env-perms.sh](#hooksscriptsfix-env-permssh)
-    - [hooks/scripts/ensure-gitignore.sh](#hooksscriptsensure-gitignore-sh)
+    - [hooks/scripts/ensure-ignore-files.sh](#hooksscriptsensure-ignore-filessh)
     - [skills/SKILL.md](#skillsserviceskillmd)
     - [agents/](#agentsagent-namemd)
     - [commands/](#commandscommandmd)
@@ -38,13 +40,13 @@ Claude Code plugins in this ecosystem (`../workspace/gotify-mcp`, `../workspace/
     - [Dockerfile](#dockerfile)
     - [docker-compose.yaml](#docker-composeyaml)
     - [SWAG Reverse Proxy Config](#swag-reverse-proxy-config)
-13. [Codex CLI Compatibility](#codex-cli-compatibility)
-14. [Marketplace Registration](#marketplace-registration)
-15. [Testing with mcporter](#testing-with-mcporter)
-16. [Validation Checklist](#validation-checklist)
-17. [Credential Flow Diagram](#credential-flow-diagram)
-18. [Development Tools Reference](#development-tools-reference)
-19. [Adding a New Plugin](#adding-a-new-plugin)
+14. [Codex CLI Compatibility](#codex-cli-compatibility)
+15. [Marketplace Registration](#marketplace-registration)
+16. [Testing with mcporter](#testing-with-mcporter)
+17. [Validation Checklist](#validation-checklist)
+18. [Credential Flow Diagram](#credential-flow-diagram)
+19. [Development Tools Reference](#development-tools-reference)
+20. [Adding a New Plugin](#adding-a-new-plugin)
 
 ---
 
@@ -102,6 +104,139 @@ use the same tool handlers and business logic.
 
 ---
 
+## Deployment Modes — Local & Docker
+
+All MCP servers **must** be deployable both locally and via Docker Compose. **Docker Compose is
+the recommended deployment method** — it isolates the MCP server from the user's system, avoids
+dependency conflicts, and provides consistent behavior across machines.
+
+### Docker Compose (recommended)
+
+Docker Compose is the primary deployment path. Users run `docker compose up -d` and the server
+starts with all dependencies self-contained. The `docker-compose.yaml`, `Dockerfile`, and
+`entrypoint.sh` ship with every plugin.
+
+**All configuration comes from `.env` via `env_file: .env` only.** The `docker-compose.yaml`
+must **not** have an `environment:` block — this duplicates configuration and creates a second
+place to manage env vars. Every variable the container needs must be in `.env` and `.env.example`.
+
+### Local deployment
+
+For development or environments where Docker is unavailable, the server runs directly on the host.
+Install language dependencies, set env vars, and start the server (e.g., `uv run python -m my_service_mcp.server`).
+
+### Environment detection
+
+Servers **must** detect whether they're running inside Docker or locally and adjust behavior
+accordingly. This prevents users from having to change URLs when switching deployment modes.
+
+```python
+# Python — detect Docker environment
+import os
+
+def is_docker() -> bool:
+    """Detect if running inside a Docker container."""
+    return (
+        os.path.exists("/.dockerenv")
+        or os.environ.get("RUNNING_IN_DOCKER", "").lower() in ("true", "1")
+    )
+```
+
+```typescript
+// TypeScript — detect Docker environment
+function isDocker(): boolean {
+  return (
+    require("fs").existsSync("/.dockerenv") ||
+    process.env.RUNNING_IN_DOCKER?.toLowerCase() === "true"
+  );
+}
+```
+
+```rust
+// Rust — detect Docker environment
+fn is_docker() -> bool {
+    std::path::Path::new("/.dockerenv").exists()
+        || std::env::var("RUNNING_IN_DOCKER").map_or(false, |v| v == "true" || v == "1")
+}
+```
+
+### URL normalization
+
+When the MCP server proxies to an upstream service (e.g., Gotify, Plex, Radarr), the upstream
+URL may differ between local and Docker deployments:
+
+- **Local**: `http://localhost:8080` or `http://127.0.0.1:8080`
+- **Docker**: `http://host.docker.internal:8080` or the Tailscale IP
+
+Servers **must** normalize URLs so the user sets one URL and it works in both contexts:
+
+#### Python
+
+```python
+import re
+
+def normalize_service_url(url: str) -> str:
+    """Normalize upstream service URL based on deployment context."""
+    if not is_docker():
+        return url
+    # Inside Docker, localhost/127.0.0.1 refers to the container, not the host.
+    return re.sub(
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+        lambda m: f"http://host.docker.internal{m.group(2) or ''}",
+        url,
+    )
+```
+
+#### TypeScript
+
+```typescript
+function normalizeServiceUrl(url: string): string {
+  if (!isDocker()) return url;
+  // Inside Docker, localhost/127.0.0.1 refers to the container, not the host.
+  return url.replace(
+    /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/,
+    (_match, _host, port) => `http://host.docker.internal${port ?? ""}`,
+  );
+}
+```
+
+#### Rust
+
+```rust
+fn normalize_service_url(url: &str) -> String {
+    if !is_docker() {
+        return url.to_string();
+    }
+    // Inside Docker, localhost/127.0.0.1 refers to the container, not the host.
+    let re = regex::Regex::new(r"https?://(localhost|127\.0\.0\.1)(:\d+)?").unwrap();
+    re.replace(url, |caps: &regex::Captures| {
+        format!("http://host.docker.internal{}", caps.get(2).map_or("", |m| m.as_str()))
+    }).to_string()
+}
+```
+
+**Rules:**
+- The user configures `MY_SERVICE_URL` once (typically `http://localhost:PORT` or a Tailscale IP)
+- The server normalizes at startup, not the user
+- Log the normalized URL at startup so users can verify the connection target
+- If `MY_SERVICE_URL` is already a non-local address (Tailscale IP, hostname), leave it unchanged
+
+### Docker security requirements
+
+Every Dockerfile **must** follow these rules:
+
+1. **Multi-stage build** — separate builder and runtime stages to minimize image size
+2. **Non-root user** — the runtime stage must use `USER 1000:1000` (or `${PUID}:${PGID}` via compose)
+3. **No baked-in secrets** — no `ENV` directives with sensitive values (API keys, tokens, passwords)
+4. **HEALTHCHECK** — hitting `/health` for container health monitoring
+5. **Dependency layer caching** — copy manifest files before source code
+
+Run `scripts/check-docker-security.sh` and `scripts/check-no-baked-env.sh` to verify compliance.
+Both scripts are available in the claude-homelab repo and should be adapted into each plugin's
+pre-commit hooks.
+
+---
+
 ## Directory Layout
 
 ```
@@ -111,17 +246,23 @@ my-service-mcp/
 │   └── plugin.json              # Claude Code plugin manifest
 ├── .codex-plugin/
 │   └── plugin.json              # Codex CLI plugin manifest
+├── .app.json                    # Codex app/connector manifest (optional)
+├── .mcp.json                    # MCP server connection config (shared by both CLIs)
 ├── agents/                      # Specialized AI agents for complex workflows
 │   └── <agent-name>.md          # Agent definition (system prompt, tools, triggers)
-├── backups/
-│   └── .gitkeep                 # Gitignored — holds .env.bak.* files
+├── assets/                      # Plugin visual assets for install surfaces (Codex)
+│   ├── icon.png                 # Plugin icon (512x512 recommended)
+│   ├── logo.svg                 # Plugin logo
+│   └── screenshots/             # Install-surface screenshots
+├── scripts/
+│   └──                          # Useful scripts for the plugin
 ├── commands/                    # Slash commands (optional)
 │   └── <command>.md             # Command definition with frontmatter
 ├── docs/                        # Reference docs, API endpoints, troubleshooting
 ├── hooks/
 │   ├── hooks.json               # Hook event wiring (SessionStart, PostToolUse)
 │   └── scripts/
-│       ├── ensure-gitignore.sh  # Ensures .env and backups are gitignored
+│       ├── ensure-ignore-files.sh # Ensures .gitignore + .dockerignore have required patterns
 │       ├── fix-env-perms.sh     # Re-enforces chmod 600 when .env is touched
 │       └── sync-env.sh          # Syncs userConfig → .env on session start
 ├── logs/
@@ -129,7 +270,7 @@ my-service-mcp/
 ├── skills/
 │   └── <service>/
 │       └── SKILL.md             # Claude-facing skill definition
-├── src/ or <service>_mcp/       # Server source code (language-specific)
+├── <service>_mcp/               # Server source code (language-specific)
 │   ├── client.*                 # Service API client
 │   └── server.*                 # MCP server entry point — action+subaction pattern
 ├── tests/
@@ -398,6 +539,67 @@ repos:
 
 The `skills-validate` hook runs whenever a `SKILL.md` file changes and ensures
 frontmatter, structure, and content pass validation before commit.
+
+### Docker & env safety hooks (all languages)
+
+Every plugin **must** also run Docker security and env-baking checks in pre-commit.
+Add these hooks to your `.pre-commit-config.yaml`:
+
+```yaml
+      # Docker security checks (all languages — add alongside your language hooks above)
+      - id: docker-security
+        name: docker-security
+        entry: bash scripts/check-docker-security.sh
+        language: system
+        files: 'Dockerfile$'
+        pass_filenames: true
+      - id: no-baked-env
+        name: no-baked-env
+        entry: bash scripts/check-no-baked-env.sh .
+        language: system
+        files: '(Dockerfile|docker-compose\.yaml|\.dockerignore|entrypoint\.sh)$'
+        pass_filenames: false
+      - id: ensure-ignore-files
+        name: ensure-ignore-files
+        entry: bash scripts/ensure-ignore-files.sh --check .
+        language: system
+        files: '(\.gitignore|\.dockerignore)$'
+        pass_filenames: false
+```
+
+Copy `check-docker-security.sh`, `check-no-baked-env.sh`, and `ensure-ignore-files.sh` from
+the claude-homelab repo's `scripts/` directory into each plugin's `scripts/` directory.
+
+**`check-docker-security.sh`** verifies:
+- Multi-stage build (builder + runtime stages)
+- Non-root user (USER 1000:1000)
+- No sensitive `ENV` directives baked into the image
+- HEALTHCHECK present
+- Dependency layer caching (manifest before source)
+
+**`check-no-baked-env.sh`** verifies:
+- No `environment:` block in `docker-compose.yaml` (all config via `env_file:` only)
+- No sensitive `ENV` in Dockerfile
+- No `.env` copied into the image
+- `.dockerignore` excludes `.env`
+
+**`ensure-ignore-files.sh`** (dual-mode):
+- **Default**: appends missing patterns to `.gitignore` and `.dockerignore` (SessionStart hook)
+- **`--check`**: reports missing patterns and exits non-zero (pre-commit/CI)
+- Full pattern lists from the guide: secrets, runtime artifacts, AI tooling, IDE, caches, docs
+- Language-aware: checks Python/TS/Rust patterns are uncommented
+- Verifies `.env.example` is not accidentally gitignored
+
+### Outdated dependency checks
+
+Run `scripts/check-outdated-deps.sh` periodically (not in pre-commit — it requires network
+access and is slow). It auto-detects Python/TypeScript/Rust from manifest files and reports
+outdated packages, lock file staleness, and known vulnerabilities.
+
+```bash
+# Run manually or in CI
+bash scripts/check-outdated-deps.sh
+```
 
 ---
 
@@ -685,6 +887,8 @@ unless they clearly improve usability.
 
 ### Pattern
 
+#### Python (FastMCP)
+
 ```python
 from typing import Literal, Optional
 from fastmcp import FastMCP, Context
@@ -698,9 +902,7 @@ async def my_service(
         "list", "get", "create", "update", "delete",
         "search", "status", "logs"
     ],
-    # Subaction for actions that have sub-operations
     subaction: Optional[Literal["enable", "disable", "reload"]] = None,
-    # Shared parameters — provide only what the action needs
     id: Optional[str] = None,
     name: Optional[str] = None,
     query: Optional[str] = None,
@@ -743,6 +945,95 @@ async def my_service(
             return await _get_logs(ctx)
         case _:
             return f"Unknown action: {action}"
+```
+
+#### TypeScript (@modelcontextprotocol/sdk)
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/server";
+import * as z from "zod/v4";
+import type { CallToolResult } from "@modelcontextprotocol/server";
+
+const server = new McpServer({ name: "MyServiceMCP", version: "1.0.0" });
+
+server.registerTool(
+  "my_service",
+  {
+    description: "Interact with My Service. Call my_service_help for reference.",
+    inputSchema: z.object({
+      action: z.enum(["list", "get", "create", "update", "delete", "search", "status", "logs"]),
+      subaction: z.enum(["enable", "disable", "reload"]).optional()
+        .describe("Subaction for action=update"),
+      id: z.string().optional().describe("Resource ID"),
+      name: z.string().optional().describe("Resource name"),
+      query: z.string().optional().describe("Search query"),
+      config: z.record(z.unknown()).optional().describe("Configuration object"),
+      confirm: z.boolean().default(false).describe("Confirm destructive actions"),
+    }),
+  },
+  async ({ action, subaction, id, name, query, config, confirm }): Promise<CallToolResult> => {
+    let result: unknown;
+    switch (action) {
+      case "list":    result = await listResources(); break;
+      case "get":     result = await getResource(id!); break;
+      case "create":  result = await createResource(name!, config); break;
+      case "update":  result = await updateResource(id!, subaction, config); break;
+      case "delete":  result = await deleteResource(id!, confirm); break;
+      case "search":  result = await searchResources(query!); break;
+      case "status":  result = await getStatus(); break;
+      case "logs":    result = await getLogs(); break;
+      default:        result = { error: `Unknown action: ${action}` };
+    }
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  },
+);
+```
+
+#### Rust (rmcp)
+
+```rust
+use rmcp::{tool, tool_router, tool_handler, ServerHandler, ErrorData};
+use rmcp::handler::server::wrapper::Parameters;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct MyServiceParams {
+    pub action: String,
+    pub subaction: Option<String>,
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub query: Option<String>,
+    pub config: Option<serde_json::Value>,
+    #[serde(default)]
+    pub confirm: bool,
+}
+
+#[derive(Clone)]
+pub struct MyServiceMcpServer { /* services, config */ }
+
+#[tool_router]
+impl MyServiceMcpServer {
+    #[tool(
+        name = "my_service",
+        description = "Interact with My Service. Call my_service_help for reference."
+    )]
+    async fn my_service(
+        &self,
+        #[tool(param)] params: MyServiceParams,
+    ) -> Result<String, ErrorData> {
+        match params.action.as_str() {
+            "list"   => Ok(serde_json::to_string(&self.svc.list_resources().await?).unwrap()),
+            "get"    => Ok(serde_json::to_string(&self.svc.get_resource(params.id.as_deref()).await?).unwrap()),
+            "create" => Ok(serde_json::to_string(&self.svc.create_resource(params.name.as_deref(), params.config).await?).unwrap()),
+            "update" => Ok(serde_json::to_string(&self.svc.update_resource(params.id.as_deref(), params.subaction.as_deref(), params.config).await?).unwrap()),
+            "delete" => Ok(serde_json::to_string(&self.svc.delete_resource(params.id.as_deref(), params.confirm).await?).unwrap()),
+            "search" => Ok(serde_json::to_string(&self.svc.search_resources(params.query.as_deref()).await?).unwrap()),
+            "status" => Ok(serde_json::to_string(&self.svc.get_status().await?).unwrap()),
+            "logs"   => Ok(serde_json::to_string(&self.svc.get_logs().await?).unwrap()),
+            other    => Err(ErrorData::invalid_params(format!("Unknown action: {other}"), None)),
+        }
+    }
+}
 ```
 
 ### Filtering, pagination, and sorting (required)
@@ -894,23 +1185,77 @@ async def my_service_help(
     return "\n".join(lines)
 ```
 
-#### TypeScript
+#### TypeScript (@modelcontextprotocol/sdk)
 
 ```typescript
-server.tool("my_service_help", "Return available actions and parameters", {
-  action: z.string().optional().describe("Get detailed help for a specific action"),
-}, async ({ action }) => {
-  const schema = { /* same structure as Python */ };
+import * as z from "zod/v4";
 
-  if (action) {
-    const entry = schema[action];
-    if (!entry) return { content: [{ type: "text", text: `Unknown action: ${action}` }] };
-    // Format detailed help for the action
-  }
+server.registerTool(
+  "my_service_help",
+  {
+    description: "Return available actions, subactions, and parameters for the my_service tool",
+    inputSchema: z.object({
+      action: z.string().optional().describe("Get detailed help for a specific action"),
+    }),
+  },
+  async ({ action }) => {
+    const schema: Record<string, { description: string; params: Record<string, string>; subactions?: Record<string, string> }> = {
+      /* same structure as Python */
+    };
 
-  // Format overview of all actions
-  return { content: [{ type: "text", text: overview }] };
-});
+    if (action) {
+      const entry = schema[action];
+      if (!entry) return { content: [{ type: "text", text: `Unknown action: ${action}` }] };
+      // Format detailed help for the action
+    }
+
+    // Format overview of all actions
+    const overview = Object.entries(schema)
+      .map(([name, entry]) => `- **${name}** — ${entry.description}`)
+      .join("\n");
+    return { content: [{ type: "text", text: overview }] };
+  },
+);
+```
+
+#### Rust (rmcp)
+
+```rust
+use rmcp::{tool, model::CallToolResult};
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct HelpParams {
+    /// Get detailed help for a specific action
+    pub action: Option<String>,
+}
+
+// Inside your #[tool_router] impl:
+#[tool(
+    name = "my_service_help",
+    description = "Return available actions, subactions, and parameters for the my_service tool"
+)]
+async fn my_service_help(
+    &self,
+    #[tool(param)] params: HelpParams,
+) -> Result<CallToolResult, rmcp::ErrorData> {
+    let schema = self.build_help_schema(); // derive from tool registration
+
+    if let Some(action) = &params.action {
+        let entry = schema.get(action.as_str());
+        let text = match entry {
+            Some(e) => format!("## {action}\n{}\n{}", e.description, e.format_params()),
+            None => format!("Unknown action: {action}. Available: {}", schema.keys().collect::<Vec<_>>().join(", ")),
+        };
+        return Ok(CallToolResult::text(text));
+    }
+
+    let overview = schema.iter()
+        .map(|(name, e)| format!("- **{name}** — {}", e.description))
+        .collect::<Vec<_>>()
+        .join("\n");
+    Ok(CallToolResult::text(overview))
+}
 ```
 
 The help tool schema object should be **derived from or kept in sync with** the domain
@@ -965,7 +1310,9 @@ src/ or <service>_mcp/
 └── utils/                   # Shared helpers (formatters, validators, logging)
 ```
 
-**Tool handler pattern** — tools are shims:
+**Tool handler pattern** — tools are thin shims that delegate to services:
+
+#### Python (FastMCP)
 
 ```python
 # ❌ Wrong — business logic in the tool handler
@@ -985,6 +1332,53 @@ async def my_service(action: str, id: str | None = None, ...) -> dict:
             return await resource_service.get(id)
         case "list":
             return await resource_service.list(limit=limit, offset=offset)
+```
+
+#### TypeScript (@modelcontextprotocol/sdk)
+
+```typescript
+import * as z from "zod/v4";
+import { resourceService } from "./services/resource_service.js";
+
+// ✅ Right — tool handler delegates to service
+server.registerTool(
+  "my_service",
+  {
+    description: "Interact with My Service. Call my_service_help for reference.",
+    inputSchema: z.object({
+      action: z.enum(["list", "get", "create", "update", "delete"]),
+      id: z.string().optional(),
+      // ...
+    }),
+  },
+  async ({ action, id, ...rest }) => {
+    switch (action) {
+      case "get":
+        return { content: [{ type: "text", text: JSON.stringify(await resourceService.get(id!)) }] };
+      case "list":
+        return { content: [{ type: "text", text: JSON.stringify(await resourceService.list(rest)) }] };
+      // ...
+    }
+  },
+);
+```
+
+#### Rust (rmcp)
+
+```rust
+// ✅ Right — tool handler delegates to service
+#[tool(name = "my_service", description = "Interact with My Service.")]
+async fn my_service(
+    &self,
+    #[tool(param)] params: MyServiceParams,
+) -> Result<CallToolResult, ErrorData> {
+    let result = match params.action.as_str() {
+        "get" => self.resource_service.get(params.id.as_deref()).await?,
+        "list" => self.resource_service.list(params.limit, params.offset).await?,
+        _ => return Err(ErrorData::invalid_params(format!("Unknown action: {}", params.action), None)),
+    };
+    Ok(CallToolResult::text(serde_json::to_string(&result).unwrap()))
+}
 ```
 
 ### Module size limit
@@ -1040,13 +1434,18 @@ Every destructive operation runs through this logic in order:
 | `<SERVICE>_MCP_ALLOW_DESTRUCTIVE` | `false` | Auto-confirm all destructive ops (CI/automation) |
 | `<SERVICE>_MCP_ALLOW_YOLO` | `false` | Skip elicitation prompts but still allow `{ confirm: true }` in params |
 
-### docker-compose.yaml
+### `.env` and `.env.example`
 
-```yaml
-environment:
-  - ${SERVICE}_MCP_ALLOW_YOLO=${${SERVICE}_MCP_ALLOW_YOLO:-false}
-  - ${SERVICE}_MCP_ALLOW_DESTRUCTIVE=${${SERVICE}_MCP_ALLOW_DESTRUCTIVE:-false}
+Both `ALLOW_YOLO` and `ALLOW_DESTRUCTIVE` must be defined in `.env` and `.env.example` — **not**
+in the `docker-compose.yaml` `environment:` block. The compose file uses `env_file: .env` only:
+
+```bash
+# .env.example
+MY_SERVICE_MCP_ALLOW_YOLO=false        # true = skip elicitation prompts
+MY_SERVICE_MCP_ALLOW_DESTRUCTIVE=false # true = auto-confirm all destructive ops
 ```
+
+The container reads these from `.env` via `env_file:`. No `environment:` block is needed or allowed.
 
 ### TypeScript implementation (reference: arcane-mcp)
 
@@ -1151,6 +1550,60 @@ async def confirm_destructive(
     return False, "blocked"
 ```
 
+### Rust equivalent (rmcp)
+
+```rust
+use rmcp::model::{CreateElicitationRequestParams, ElicitationSchema};
+
+pub struct ConfirmResult {
+    pub confirmed: bool,
+    pub method: &'static str, // "env_bypass", "elicitation", "blocked"
+}
+
+pub async fn confirm_destructive(
+    ctx: &rmcp::service::RequestContext<rmcp::RoleServer>,
+    action: &str,
+    subaction: &str,
+    target_id: Option<&str>,
+) -> ConfirmResult {
+    // Path 1: env bypass
+    if std::env::var(format!("{SERVICE}_MCP_ALLOW_DESTRUCTIVE"))
+        .map_or(false, |v| v == "true" || v == "1")
+    {
+        return ConfirmResult { confirmed: true, method: "env_bypass" };
+    }
+
+    // Path 2: elicitation (skipped in YOLO mode)
+    let yolo = std::env::var(format!("{SERVICE}_MCP_ALLOW_YOLO"))
+        .map_or(false, |v| v == "true" || v == "1");
+
+    if !yolo {
+        let message = format!(
+            "Destructive: {action}:{subaction}{}",
+            target_id.map_or(String::new(), |id| format!(" on `{id}`"))
+        );
+        let schema = ElicitationSchema::builder()
+            .required_boolean("confirm")
+            .build()
+            .unwrap();
+        let params = CreateElicitationRequestParams::FormElicitationParams {
+            meta: None,
+            message,
+            requested_schema: schema,
+        };
+        if let Ok(result) = ctx.peer().create_elicitation(params).await {
+            if result.action == "accept" {
+                return ConfirmResult { confirmed: true, method: "elicitation" };
+            }
+            return ConfirmResult { confirmed: false, method: "elicitation" };
+        }
+    }
+
+    // Path 3: hard block
+    ConfirmResult { confirmed: false, method: "blocked" }
+}
+```
+
 ### SKILL.md documentation
 
 Destructive subactions in the skill's tool reference **must** be clearly marked:
@@ -1209,10 +1662,54 @@ Python (FastMCP handles this), TypeScript (Express `server.close()`), Rust (toki
 Tool responses can be arbitrarily large (e.g., listing 10,000 containers). Cap responses
 to prevent blowing up the client's context window:
 
+#### Python (FastMCP)
+
+FastMCP 3.x includes built-in `ResponseLimitingMiddleware`:
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.middleware.response_limiting import ResponseLimitingMiddleware
+
+mcp = FastMCP("MyServiceMCP")
+
+# Limit all tool responses to 512KB
+mcp.add_middleware(ResponseLimitingMiddleware(max_size=512_000))
+```
+
+Or manually for custom truncation:
+
 ```python
 MAX_RESPONSE_SIZE = 512 * 1024  # 512KB
 if len(response) > MAX_RESPONSE_SIZE:
     response = response[:MAX_RESPONSE_SIZE] + "\n\n[Response truncated at 512KB]"
+```
+
+#### TypeScript (@modelcontextprotocol/sdk)
+
+```typescript
+const MAX_RESPONSE_SIZE = 512 * 1024; // 512KB
+
+function truncateResponse(text: string): string {
+  if (Buffer.byteLength(text, "utf-8") <= MAX_RESPONSE_SIZE) return text;
+  // Truncate at byte boundary, then trim to last complete UTF-8 char
+  const truncated = Buffer.from(text).subarray(0, MAX_RESPONSE_SIZE).toString("utf-8");
+  return truncated + "\n\n[Response truncated at 512KB]";
+}
+```
+
+#### Rust (rmcp)
+
+```rust
+const MAX_RESPONSE_SIZE: usize = 512 * 1024; // 512KB
+
+fn truncate_response(text: &str) -> String {
+    if text.len() <= MAX_RESPONSE_SIZE {
+        return text.to_string();
+    }
+    // Find the last valid UTF-8 char boundary before the limit
+    let truncated = &text[..text.floor_char_boundary(MAX_RESPONSE_SIZE)];
+    format!("{truncated}\n\n[Response truncated at 512KB]")
+}
 ```
 
 ---
@@ -1300,8 +1797,9 @@ drift before release, not after Claude discovers inconsistent behavior at runtim
 Servers **may** expose read-only data as MCP resources for direct access without tool calls.
 Resources are useful for data Claude can reference without executing an action.
 
+#### Python (FastMCP)
+
 ```python
-# Python (FastMCP)
 @mcp.resource("myservice://status")
 async def service_status() -> str:
     """Current service status and configuration."""
@@ -1311,6 +1809,57 @@ async def service_status() -> str:
 async def get_item(item_id: str) -> str:
     """Details for a specific item."""
     return json.dumps(await fetch_item(item_id))
+```
+
+#### TypeScript (@modelcontextprotocol/sdk)
+
+```typescript
+server.resource("myservice://status", "Service status", async () => ({
+  contents: [{ uri: "myservice://status", text: JSON.stringify(await getStatus()) }],
+}));
+
+server.resource("myservice://items/{item_id}", "Item details", async (uri) => {
+  const itemId = uri.pathname.split("/").pop()!;
+  return { contents: [{ uri: uri.href, text: JSON.stringify(await fetchItem(itemId)) }] };
+});
+```
+
+#### Rust (rmcp)
+
+```rust
+// In your ServerHandler impl, override list_resources and read_resource:
+fn list_resources(
+    &self,
+    _request: Option<PaginatedRequestParams>,
+    _context: RequestContext<RoleServer>,
+) -> impl Future<Output = Result<ListResourcesResult, McpError>> + '_ {
+    async {
+        Ok(ListResourcesResult {
+            resources: vec![
+                Resource { uri: "myservice://status".into(), name: "Service Status".into(), ..Default::default() },
+            ],
+            ..Default::default()
+        })
+    }
+}
+
+fn read_resource(
+    &self,
+    request: ReadResourceRequestParams,
+    _context: RequestContext<RoleServer>,
+) -> impl Future<Output = Result<ReadResourceResult, McpError>> + '_ {
+    async move {
+        match request.uri.as_str() {
+            "myservice://status" => {
+                let status = self.get_status().await?;
+                Ok(ReadResourceResult {
+                    contents: vec![ResourceContents::text(request.uri, serde_json::to_string(&status).unwrap())],
+                })
+            }
+            _ => Err(McpError::resource_not_found(request.uri, None)),
+        }
+    }
+}
 ```
 
 ### When not to expose a resource
@@ -1323,14 +1872,6 @@ Do **not** expose a resource just because the data exists. Prefer tools instead 
 - the data is only meaningful as the result of an action with explicit user intent
 
 Resources should stay small, read-only, and obviously useful as passive context.
-
-```typescript
-// TypeScript
-server.resource("myservice://status", "Service status", async () => ({
-  contents: [{ uri: "myservice://status", text: JSON.stringify(status) }],
-}));
-```
-
 Resources are optional — not every server needs them. Use for data that is
 frequently referenced but doesn't change often.
 
@@ -1414,6 +1955,28 @@ Use all available metadata fields.
 
 ---
 
+### `.app.json`
+
+Codex app/connector manifest at the plugin root. Points Codex at the MCP server and any
+additional apps or connectors the plugin provides.
+
+```json
+{
+  "apps": [
+    {
+      "name": "my-service-mcp",
+      "type": "mcp",
+      "config": "./.mcp.json"
+    }
+  ]
+}
+```
+
+This file is optional for Claude Code (which reads `.mcp.json` directly) but required for
+full Codex compatibility. Keep it at the plugin root alongside `.mcp.json`.
+
+---
+
 ### `.mcp.json`
 
 MCP server connection config. Supports four transport types:
@@ -1486,7 +2049,7 @@ The wrapper object with `"description"` and `"hooks"` is required. Bare arrays a
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/ensure-gitignore.sh",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/ensure-ignore-files.sh",
             "timeout": 5
           }
         ]
@@ -1615,36 +2178,41 @@ done
 
 ---
 
-### `hooks/scripts/ensure-gitignore.sh`
+### `hooks/scripts/ensure-ignore-files.sh`
 
-Identical across all plugins. Appends required gitignore patterns if missing. Runs at
-`SessionStart` only — the patterns are static and do not need per-tool-call verification.
+Identical across all plugins. Handles both `.gitignore` and `.dockerignore` in one script.
+Runs at `SessionStart` to ensure required patterns exist.
+
+**Two modes:**
+- **Default** (no flags): appends missing patterns silently — used as a SessionStart hook
+- **`--check`**: reports pass/fail for every pattern, exits non-zero on failures — used in pre-commit and CI
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
+# As a SessionStart hook (auto-fix mode):
+ensure-ignore-files.sh
 
-GITIGNORE="${CLAUDE_PLUGIN_ROOT}/.gitignore"
-
-REQUIRED=(
-  ".env"
-  ".env.*"
-  "!.env.example"
-  "backups/*"
-  "!backups/.gitkeep"
-  "logs/*"
-  "!logs/.gitkeep"
-  "__pycache__/"
-)
-
-touch "$GITIGNORE"
-
-for pattern in "${REQUIRED[@]}"; do
-  if ! grep -qxF "$pattern" "$GITIGNORE" 2>/dev/null; then
-    echo "$pattern" >> "$GITIGNORE"
-  fi
-done
+# As a pre-commit check (report-only mode):
+ensure-ignore-files.sh --check .
 ```
+
+**`.gitignore` patterns enforced** (27 patterns):
+- Secrets: `.env`, `.env.*`, `!.env.example`
+- Runtime: `backups/*`, `!backups/.gitkeep`, `logs/*`, `!logs/.gitkeep`, `*.log`
+- AI tooling: `.claude/settings.local.json`, `.claude/worktrees/`, `.omc/`, `.lavra/`, `.beads/`, `.serena/`, `.worktrees`, `.full-review/`, `.full-review-archive-*`
+- IDE: `.vscode/`, `.cursor/`, `.windsurf/`, `.1code/`
+- Caches: `.cache/`
+- Docs: `docs/plans/`, `docs/sessions/`, `docs/reports/`, `docs/research/`, `docs/superpowers/`
+
+**`.dockerignore` patterns enforced** (28 patterns):
+- VCS: `.git`, `.github`
+- Secrets: `.env`, `.env.*`, `!.env.example`
+- AI tooling: `.claude`, `.claude-plugin`, `.codex-plugin`, `.omc`, `.lavra`, `.beads`, `.serena`, `.worktrees`, `.full-review`, `.full-review-archive-*`
+- IDE: `.vscode`, `.cursor`, `.windsurf`, `.1code`
+- Not needed at runtime: `docs`, `tests`, `scripts`, `*.md`, `!README.md`
+- Runtime artifacts: `logs`, `backups`, `*.log`, `.cache`
+
+In `--check` mode, the script also detects the project language (Python/TS/Rust) and warns
+if language-specific patterns are not uncommented.
 
 Why `!.env.example`: the `.env.*` glob silently gitignores `.env.example` on fresh clones without it.
 
@@ -1956,7 +2524,7 @@ docs/superpowers/
 # go.work
 ```
 
-The `ensure-gitignore.sh` hook enforces `.env`, `backups/`, `logs/`, and `__pycache__/` patterns
+The `ensure-ignore-files.sh` hook enforces all required `.gitignore` and `.dockerignore` patterns
 automatically at runtime, but these must be present from the initial commit.
 
 ---
@@ -2381,8 +2949,10 @@ ENTRYPOINT ["my-service-mcp"]
 
 ### `docker-compose.yaml`
 
-All configuration comes from `.env` — no hardcoded values. Supports `PUID`/`PGID` for file
-ownership, named volumes, and external networks for reverse proxy integration.
+**All configuration comes from `.env` via `env_file:` only — no `environment:` block.**
+Do not duplicate env vars in `docker-compose.yaml`. Every variable the container needs must
+be in `.env` and `.env.example`. This gives one place to manage all configuration and prevents
+drift between the compose file and the env file.
 
 ```yaml
 services:
@@ -2392,9 +2962,8 @@ services:
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
     env_file: .env
-    environment:
-      - MY_SERVICE_MCP_ALLOW_YOLO=${MY_SERVICE_MCP_ALLOW_YOLO:-false}
-      - MY_SERVICE_MCP_ALLOW_DESTRUCTIVE=${MY_SERVICE_MCP_ALLOW_DESTRUCTIVE:-false}
+    # NOTE: No environment: block — all vars come from .env via env_file above.
+    # Do NOT add environment: here. Put all variables in .env and .env.example.
     ports:
       - "${MY_SERVICE_MCP_PORT:-9000}:9000/tcp"
     volumes:
@@ -2423,8 +2992,8 @@ networks:
 ```
 
 **Key patterns:**
-- `user: "${PUID}:${PGID}"` — file ownership matches host user, avoids root
-- `env_file: .env` — sole source of config, no hardcoded `environment:` block
+- `user: "${PUID}:${PGID}"` — file ownership matches host user (defaults to 1000:1000), never root
+- `env_file: .env` — **sole source of config**. No `environment:` block allowed — all variables in `.env` only
 - Single named volume — `${MY_SERVICE_MCP_VOLUME:-default}` mounted at `/data`; server writes logs, cache, etc. as subdirectories
 - No `backups/` mount — backups are host-side only (written by `sync-env.sh` hooks, not the container)
 - External network — integrates with reverse proxy (SWAG, Traefik, Caddy)
@@ -2575,33 +3144,42 @@ server {
 
 ## Codex CLI Compatibility
 
-Every plugin **must** also work with OpenAI's Codex CLI. Since `CLAUDE.md` is symlinked to
-`AGENTS.md`, Codex discovers the same project instructions automatically.
+Every plugin **must** create both Claude Code and Codex plugins. Both CLIs must be supported
+from a single repo. This is not optional — dual-CLI support is a hard requirement.
 
 ### Plugin structure mapping
 
-Codex plugins use `.codex-plugin/` instead of `.claude-plugin/`. To support both CLIs from
-a single repo, create both manifests:
+Codex plugins use `.codex-plugin/` instead of `.claude-plugin/`. The repo ships both manifests
+plus Codex-specific files (`.app.json`, `assets/`):
 
 ```
 my-service-mcp/
 ├── .claude-plugin/
 │   └── plugin.json           # Claude Code manifest
 ├── .codex-plugin/
-│   └── plugin.json           # Codex manifest (same structure, minor field differences)
+│   └── plugin.json           # Codex manifest (see schema below)
+├── .app.json                 # Codex app/connector manifest (points to apps or connectors)
+├── .mcp.json                 # MCP server connection config (shared by both CLIs)
+├── assets/                   # Plugin visual assets for Codex install surfaces
+│   ├── icon.png              # Plugin icon (512x512 recommended)
+│   ├── logo.svg              # Plugin logo
+│   └── screenshots/          # Install-surface screenshots
 ├── CLAUDE.md                 # Canonical AI instructions
 ├── AGENTS.md -> CLAUDE.md    # Codex reads this
 ├── GEMINI.md -> CLAUDE.md    # Gemini CLI reads this
-├── skills/                   # Shared — both CLIs discover skills here
-│   └── <service>/
-│       └── SKILL.md
-└── .mcp.json                 # Shared — both CLIs read this
+└── skills/                   # Shared — both CLIs discover skills here
+    └── <service>/
+        └── SKILL.md
 ```
+
+> **Note:** The `assets/` directory at the plugin root is for Codex install-surface visuals
+> (icons, logos, screenshots). Do **not** confuse this with skill-level assets. Skills have
+> their own `assets/` if needed (e.g., `skills/<service>/assets/`).
 
 ### Codex plugin.json
 
-The Codex manifest lives at `.codex-plugin/plugin.json` with a compatible but slightly
-different schema:
+The Codex manifest lives at `.codex-plugin/plugin.json`. It supports richer metadata than
+Claude Code's manifest, including install-surface presentation fields:
 
 ```json
 {
@@ -2609,23 +3187,88 @@ different schema:
   "version": "1.0.0",
   "description": "Manage My Service via MCP tools",
   "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
   "author": {
-    "name": "Your Name",
-    "email": "you@example.com"
+    "name": "Jacob Magar",
+    "email": "jmagar@users.noreply.github.com"
   },
   "homepage": "https://github.com/jmagar/my-service-mcp",
   "repository": "https://github.com/jmagar/my-service-mcp",
   "license": "MIT",
-  "keywords": ["my-service", "homelab", "mcp"]
+  "keywords": ["my-service", "homelab", "mcp"],
+  "interface": {
+    "displayName": "My Service MCP",
+    "shortDescription": "Manage My Service resources via MCP tools",
+    "longDescription": "Full MCP integration for My Service with action+subaction pattern, destructive operation gating, and dual-mode skill support.",
+    "developerName": "Jacob Magar",
+    "category": "Infrastructure",
+    "capabilities": ["mcp", "tools", "skills"],
+    "brandColor": "#4A90D9",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.svg",
+    "screenshots": ["./assets/screenshots/overview.png"]
+  }
 }
 ```
 
+**Manifest field reference:**
+
+| Field | Purpose |
+|---|---|
+| `name`, `version`, `description` | Package identity |
+| `author`, `homepage`, `repository`, `license`, `keywords` | Publisher and discovery metadata |
+| `skills` | Points to bundled skill folders (relative to plugin root) |
+| `mcpServers` | Points to `.mcp.json` for MCP server config |
+| `apps` | Points to `.app.json` for app/connector definitions |
+| `interface.displayName` | Title shown on install surfaces |
+| `interface.shortDescription` / `longDescription` | Descriptive copy for install UI |
+| `interface.developerName` | Publisher name |
+| `interface.category` | Plugin category (e.g., Infrastructure, Media, Utilities) |
+| `interface.capabilities` | Capability tags |
+| `interface.brandColor` | Brand color for visual presentation |
+| `interface.composerIcon` / `logo` | Icon and logo paths (relative, under `./assets/`) |
+| `interface.screenshots` | Screenshot paths for install surface |
+| `interface.websiteURL` / `privacyPolicyURL` / `termsOfServiceURL` | External links (optional) |
+| `interface.defaultPrompt` | Starter prompt shown after install (optional) |
+
+**Path rules:**
+- Keep all manifest paths relative to the plugin root, starting with `./`
+- Store visual assets under `./assets/`
+- Only `plugin.json` belongs in `.codex-plugin/` — keep `skills/`, `assets/`, `.mcp.json`,
+  and `.app.json` at the plugin root
+
 Key differences from Claude Code's `plugin.json`:
-- `"skills"` field points to the skills directory (Claude Code auto-discovers)
+- `skills` field explicitly points to the skills directory (Claude Code auto-discovers)
+- `interface` object controls install-surface presentation (not in Claude Code)
+- `apps` field for `.app.json` connector definitions
 - No `userConfig` — Codex uses `AGENTS.md` and env vars for configuration
-- No `mcpServers` in manifest — Codex reads `.mcp.json` directly
+
+### `.app.json`
+
+The `.app.json` file at the plugin root points Codex at apps or connectors. For MCP-server
+plugins this is typically minimal:
+
+```json
+{
+  "apps": [
+    {
+      "name": "my-service-mcp",
+      "type": "mcp",
+      "config": "./.mcp.json"
+    }
+  ]
+}
+```
+
+If your plugin doesn't expose apps or connectors beyond the MCP server, this file can be
+omitted — but including it makes the plugin discoverable in Codex's app catalog.
 
 ### Codex marketplace
+
+A marketplace file controls plugin ordering and install policies in Codex-facing catalogs.
+It can represent one plugin while testing or a curated list of plugins that Codex shows
+together under one marketplace name.
 
 Codex supports two marketplace locations:
 
@@ -2637,21 +3280,51 @@ Codex supports two marketplace locations:
 ```json
 {
   "name": "homelab-plugins",
-  "interface": { "displayName": "Homelab Plugins" },
-  "plugins": [{
-    "name": "my-service-mcp",
-    "source": {
-      "source": "local",
-      "path": "./path/to/my-service-mcp"
+  "interface": {
+    "displayName": "Homelab Plugins"
+  },
+  "plugins": [
+    {
+      "name": "my-service-mcp",
+      "source": {
+        "source": "local",
+        "path": "./plugins/my-service-mcp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Infrastructure"
     },
-    "policy": {
-      "installation": "AVAILABLE",
-      "authentication": "ON_INSTALL"
-    },
-    "category": "Infrastructure"
-  }]
+    {
+      "name": "another-service-mcp",
+      "source": {
+        "source": "local",
+        "path": "./plugins/another-service-mcp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Media"
+    }
+  ]
 }
 ```
+
+**Marketplace rules:**
+- Use top-level `name` to identify the marketplace
+- Use `interface.displayName` for the marketplace title shown in Codex
+- Add one object per plugin under `plugins` to build a curated list
+- Point each plugin entry's `source.path` at the plugin directory. For repo installs, use
+  `./plugins/`. For personal installs, use `./.codex/plugins/<plugin-name>`
+- Keep `source.path` relative to the marketplace root, start with `./`, and keep inside that root
+- Always include `policy.installation`, `policy.authentication`, and `category` on each entry
+- `policy.installation` values: `AVAILABLE`, `INSTALLED_BY_DEFAULT`, `NOT_AVAILABLE`
+- `policy.authentication` decides whether auth happens on install or first use
+
+Before adding a plugin to a marketplace, make sure its version, publisher metadata, and
+install-surface copy are ready for other developers to see.
 
 Codex installs plugins into `~/.codex/plugins/cache/$MARKETPLACE_NAME/$PLUGIN_NAME/$VERSION/`.
 
@@ -2679,11 +3352,14 @@ Users invoke plugins in Codex via:
 ### Checklist for dual-CLI support
 
 - [ ] `.claude-plugin/plugin.json` exists (Claude Code)
-- [ ] `.codex-plugin/plugin.json` exists (Codex CLI)
+- [ ] `.codex-plugin/plugin.json` exists (Codex CLI) with `interface` object
+- [ ] `.app.json` at plugin root (Codex app/connector manifest)
+- [ ] `assets/` directory with icon, logo, screenshots (Codex install surface)
 - [ ] `AGENTS.md` symlinks to `CLAUDE.md`
 - [ ] `GEMINI.md` symlinks to `CLAUDE.md`
 - [ ] `.mcp.json` at repo root (shared by both CLIs)
 - [ ] `skills/` directory with `SKILL.md` files (shared by both CLIs)
+- [ ] Marketplace entry includes `policy.installation`, `policy.authentication`, and `category`
 
 ---
 
@@ -3152,14 +3828,16 @@ scratch — these tools enforce all the conventions in this guide.
 
 ### Plugin manifests
 - [ ] **`.claude-plugin/plugin.json`** — all userConfig fields have `type`, `title`, `description`, `sensitive`; `my_service_mcp_url` includes `/mcp` in default
-- [ ] **`.codex-plugin/plugin.json`** — Codex manifest with `"skills": "./skills/"`
+- [ ] **`.codex-plugin/plugin.json`** — Codex manifest with `skills`, `mcpServers`, `apps`, and `interface` object
+- [ ] **`.app.json`** — Codex app/connector manifest at plugin root
+- [ ] **`assets/`** — Plugin visual assets (icon.png, logo.svg, screenshots/) for Codex install surfaces
 - [ ] **`.mcp.json`** — `url: "${user_config.my_service_mcp_url}"`, `Authorization: "Bearer ${user_config.my_service_mcp_token}"`
 
 ### Hooks
 - [ ] **`hooks/hooks.json`** — SessionStart + PostToolUse structure
 - [ ] **`hooks/scripts/sync-env.sh`** — maps `CLAUDE_PLUGIN_OPTION_*` → `.env` via `awk`; fails if bearer token missing (no auto-gen)
 - [ ] **`hooks/scripts/fix-env-perms.sh`** — enforces chmod 600 on `.env` (identical across plugins)
-- [ ] **`hooks/scripts/ensure-gitignore.sh`** — ensures required patterns (identical across plugins)
+- [ ] **`hooks/scripts/ensure-ignore-files.sh`** — ensures .gitignore + .dockerignore have all required patterns (identical across plugins)
 
 ### MCP server
 - [ ] **Server entry point** — action+subaction tool pattern + help tool; bearer auth middleware; bind `0.0.0.0`; `GET /health` unauthenticated
@@ -3179,16 +3857,19 @@ scratch — these tools enforce all the conventions in this guide.
 - [ ] **`pyproject.toml` / `package.json` / `Cargo.toml`** — tool caches pointed at `.cache/`
 
 ### Docker & deployment
-- [ ] **`entrypoint.sh`** — env validation, `exec` for signal handling, strict mode
-- [ ] **`Dockerfile`** — multi-stage build, non-root user (1000:1000), healthcheck on `/health`
+- [ ] **`entrypoint.sh`** — env validation, env detection (local vs Docker), URL normalization, `exec` for signal handling, strict mode
+- [ ] **`Dockerfile`** — multi-stage build, non-root user (`USER 1000:1000`), healthcheck on `/health`, no baked-in secrets
 - [ ] **`.dockerignore`** — exclude `.git`, build artifacts, `docs`, `tests`, `logs`, `.env`
-- [ ] **`docker-compose.yaml`** — `env_file: .env`, `user: "${PUID}:${PGID}"`, destructive env vars, named volume, external network, resource limits
+- [ ] **`docker-compose.yaml`** — `env_file: .env` only (**no `environment:` block**), `user: "${PUID}:${PGID}"`, named volume, external network, resource limits
 - [ ] **`<service>.subdomain.conf`** — SWAG reverse proxy config with Tailscale IPs (no `-mcp` suffix)
+- [ ] **`scripts/check-docker-security.sh`** — passes (multi-stage, non-root, no baked secrets)
+- [ ] **`scripts/check-no-baked-env.sh`** — passes (no `environment:` block, no baked env)
 
 ### Quality
 - [ ] **`Justfile`** — standard recipes: dev, test, lint, fmt, build, up, down, health, test-live
-- [ ] **`.pre-commit-config.yaml`** — language linter + `skills-ref validate`
+- [ ] **`.pre-commit-config.yaml`** — language linter + `skills-ref validate` + `docker-security` + `no-baked-env`
 - [ ] **`.github/workflows/ci.yml`** — lint, typecheck, test, version-sync, audit, contract-drift
+- [ ] **`scripts/check-outdated-deps.sh`** — run periodically to check for outdated packages
 - [ ] **`tests/test_live.sh`** — mcporter-based, tests required tool pair, help output contract, auth rejection, destructive confirmation gate, and pagination metadata
 - [ ] **TDD + verification discipline** — start from a failing test/check, implement, then prove behavior with live or integration evidence
 - [ ] **`scripts/lint-plugin.sh`** — validates naming, manifests, response shapes, and contract drift
