@@ -154,6 +154,25 @@
       "homepage": "https://github.com/jmagar/claude-homelab"
     },
     {
+      "name": "unraid-mcp",
+      "source": {
+        "source": "github",
+        "repo": "jmagar/unraid-mcp"
+      },
+      "description": "Query, monitor, and manage Unraid servers via GraphQL API through MCP tools with HTTP fallback. Supports system info, Docker, VMs, array/parity, notifications, plugins, rclone, and live telemetry. Requires unraid-mcp MCP server running.",
+      "version": "1.2.0",
+      "category": "infrastructure",
+      "tags": [
+        "unraid",
+        "monitoring",
+        "graphql",
+        "docker",
+        "nas",
+        "mcp"
+      ],
+      "homepage": "https://github.com/jmagar/unraid-mcp"
+    },
+    {
       "name": "unifi-mcp",
       "source": {
         "source": "github",
