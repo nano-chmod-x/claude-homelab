@@ -12,6 +12,34 @@
 #   "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/ensure-ignore-files.sh"
 set -euo pipefail
 
+usage() {
+  cat <<EOF
+Usage: $0 [--help] [--check] [project-dir]
+
+Ensures .gitignore and .dockerignore have all required patterns.
+
+Modes:
+  (default)   Append missing patterns to the files
+  --check     Report missing patterns and exit non-zero if any are missing
+
+Arguments:
+  project-dir   Directory to check (default: current directory)
+
+Options:
+  --check       Check-only mode — no file modification, exit 1 if patterns missing
+  -h, --help    Show this help and exit
+
+Exit codes:
+  0  All patterns present (or added in default mode)
+  1  One or more patterns missing (--check mode only)
+EOF
+  exit 0
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+
 CHECK_MODE=false
 if [[ "${1:-}" == "--check" ]]; then
   CHECK_MODE=true

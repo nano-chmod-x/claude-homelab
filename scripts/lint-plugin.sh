@@ -10,6 +10,47 @@
 #   1 — one or more required checks failed
 set -euo pipefail
 
+usage() {
+  cat <<EOF
+Usage: $0 [--help] [project-dir]
+
+Validates plugin structure against MCP server plugin conventions.
+
+Checks:
+  1.  Manifest files exist (.claude-plugin/plugin.json, etc.)
+  2.  plugin.json has all required fields
+  3.  userConfig entries have required attributes (type, title, description, sensitive)
+  4.  Codex manifest has interface.displayName
+  5.  Version numbers are in sync across manifests
+  6.  No generic (unprefixed) env var names
+  7.  Domain tool + help tool present in source
+  8.  Required files present (README.md, CHANGELOG.md, Dockerfile, etc.)
+  9.  AGENTS.md and GEMINI.md are symlinks to CLAUDE.md
+  10. skills/ directory has SKILL.md files
+  11. hooks/ scripts exist and are executable
+  12. docker-compose.yaml uses env_file, has user:, no environment: block
+  13. SWAG .subdomain.conf present
+  14. No .env tracked in git
+  15. Required directories exist (backups/, logs/, tests/, skills/)
+  16. assets/ directory has icon files
+
+Arguments:
+  project-dir   Directory to lint (default: current directory)
+
+Options:
+  -h, --help    Show this help and exit
+
+Exit codes:
+  0  All required checks passed (warnings are OK)
+  1  One or more required checks failed
+EOF
+  exit 0
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+
 PROJECT_DIR="${1:-.}"
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
 

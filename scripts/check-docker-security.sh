@@ -10,6 +10,33 @@
 #   4. HEALTHCHECK present
 set -euo pipefail
 
+usage() {
+  cat <<EOF
+Usage: $0 [--help] [path/to/Dockerfile]
+
+Checks Dockerfile for security issues:
+  - Multi-stage build (separate builder + runtime stages)
+  - Non-root user (USER directive with 1000:1000 or \${PUID}:\${PGID})
+  - No sensitive ENV directives baked into the image
+  - HEALTHCHECK present
+
+Arguments:
+  path/to/Dockerfile   Path to Dockerfile (default: ./Dockerfile)
+
+Options:
+  -h, --help           Show this help and exit
+
+Exit codes:
+  0  All required checks passed (warnings are OK)
+  1  One or more required checks failed
+EOF
+  exit 0
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+
 PASS=0
 FAIL=0
 WARN=0

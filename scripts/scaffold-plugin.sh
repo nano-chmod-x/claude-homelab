@@ -39,6 +39,30 @@ EOF
   exit 1
 }
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<EOF
+Usage: $0 <service-name> <language> [--port PORT]
+
+Generates a new MCP server plugin skeleton from the canonical template.
+
+Arguments:
+  service-name   Lowercase, hyphenated service name (e.g. my-service)
+  language       python | typescript | rust
+
+Options:
+  --port PORT    MCP server port (default: 9000)
+  -h, --help     Show this help and exit
+
+Examples:
+  $0 gotify python --port 9158
+  $0 synapse typescript --port 3000
+  $0 syslog rust --port 3100
+
+Creates directory ./<service-name>-mcp/ with full plugin structure.
+EOF
+  exit 0
+fi
+
 if [ $# -lt 2 ]; then
   usage
 fi

@@ -8,6 +8,33 @@
 # Not recommended for pre-commit (requires network, slow). Run periodically or in CI.
 set -euo pipefail
 
+usage() {
+  cat <<EOF
+Usage: $0 [--help] [project-dir]
+
+Detects potentially outdated dependencies for Python, TypeScript, and Rust projects.
+Auto-detects language from manifest files (pyproject.toml, package.json, Cargo.toml).
+
+Not recommended for pre-commit (requires network, slow). Run periodically or in CI.
+
+Arguments:
+  project-dir   Directory to check (default: current directory)
+
+Options:
+  -h, --help    Show this help and exit
+
+Exit codes:
+  0  All dependencies are current
+  1  Outdated dependencies found
+  2  No recognized project manifests found
+EOF
+  exit 0
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+
 PROJECT_DIR="${1:-.}"
 FOUND_OUTDATED=0
 CHECKED=0

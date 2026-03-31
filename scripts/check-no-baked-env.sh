@@ -9,6 +9,33 @@
 #   3. No hardcoded URLs, tokens, or credentials in Dockerfile or docker-compose.yaml
 set -euo pipefail
 
+usage() {
+  cat <<EOF
+Usage: $0 [--help] [project-dir]
+
+Verifies no secrets/credentials are baked into Docker image layers:
+  - docker-compose.yaml has no environment: block (all config via env_file only)
+  - Dockerfile has no ENV with sensitive values
+  - No hardcoded tokens/keys in Dockerfile or docker-compose.yaml
+  - .dockerignore excludes .env
+
+Arguments:
+  project-dir   Directory to check (default: current directory)
+
+Options:
+  -h, --help    Show this help and exit
+
+Exit codes:
+  0  All required checks passed (warnings are OK)
+  1  One or more required checks failed
+EOF
+  exit 0
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+fi
+
 PROJECT_DIR="${1:-.}"
 PASS=0
 FAIL=0
