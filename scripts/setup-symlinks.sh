@@ -96,20 +96,15 @@ main() {
     log_info "Creating base directories..."
     mkdir -p "$CLAUDE_DIR"/{skills,agents,commands}
 
-    # Setup service plugins (symlinked into ~/.claude/skills/ for bash-path users)
-    # Must point to skills/<name>/ subdirectory so SKILL.md is at ~/.claude/skills/<name>/SKILL.md
+    # Setup service skills (symlinked into ~/.claude/skills/ for bash-path users)
+    # Each skills/<name>/ directory is symlinked so SKILL.md is at ~/.claude/skills/<name>/SKILL.md
     echo ""
-    log_info "Setting up service plugins..."
-    if [ -d "$REPO_ROOT/service-plugins" ]; then
-        while IFS= read -r -d '' plugin_dir; do
-            plugin_name=$(basename "$plugin_dir")
-            skill_dir="$plugin_dir/skills/$plugin_name"
-            if [ -d "$skill_dir" ]; then
-                create_symlink "$skill_dir" "$CLAUDE_DIR/skills/$plugin_name" "directory"
-            else
-                log_warn "No skill dir found for $plugin_name (expected: $skill_dir)"
-            fi
-        done < <(find "$REPO_ROOT/service-plugins" -mindepth 1 -maxdepth 1 -type d -print0)
+    log_info "Setting up service skills..."
+    if [ -d "$REPO_ROOT/skills" ]; then
+        while IFS= read -r -d '' skill_dir; do
+            skill_name=$(basename "$skill_dir")
+            create_symlink "$skill_dir" "$CLAUDE_DIR/skills/$skill_name" "directory"
+        done < <(find "$REPO_ROOT/skills" -mindepth 1 -maxdepth 1 -type d -print0)
     fi
 
     # Setup agents
@@ -148,7 +143,7 @@ main() {
     mkdir -p "$homelab_dir"
 
     # Install load-env.sh
-    cp "$REPO_ROOT/lib/load-env.sh" "$homelab_dir/load-env.sh"
+    cp "$REPO_ROOT/scripts/load-env.sh" "$homelab_dir/load-env.sh"
     log_success "Installed: $homelab_dir/load-env.sh"
 
     # Stub .env from .env.example only if not already present

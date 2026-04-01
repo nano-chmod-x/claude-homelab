@@ -13,6 +13,7 @@ Claude Code skills, agents, and commands for self-hosted homelab service managem
 - [After Install: First-Time Setup](#after-install-first-time-setup)
 - [Credential Management](#credential-management)
 - [Service Plugins](#service-plugins)
+- [Skill vs Plugin Boundary](#skill-vs-plugin-boundary)
 - [Homelab-Core: What Gets Installed](#homelab-core-what-gets-installed)
   - [Skills](#skills)
   - [Agents](#agents)
@@ -227,10 +228,35 @@ load_service_credentials "plex" "PLEX_URL" "PLEX_TOKEN"
 ```
 
 `load-env.sh` is installed to `~/.claude-homelab/load-env.sh` by both install paths:
-- **Bash path**: `setup-symlinks.sh` copies it from `lib/load-env.sh`
+- **Bash path**: `setup-symlinks.sh` copies it from `scripts/load-env.sh`
 - **Plugin path**: `setup-creds.sh` copies it (from the repo if available, or fetches from GitHub)
 
-The canonical source is `lib/load-env.sh` in this repo. If you need to update it, edit the source there and re-run `setup-symlinks.sh` (bash path) or `setup-creds.sh` (plugin path).
+The canonical source is `scripts/load-env.sh` in this repo. If you need to update it, edit the source there and re-run `setup-symlinks.sh` (bash path) or `setup-creds.sh` (plugin path).
+
+## Skill vs Plugin Boundary
+
+Not every service integration in this repo is a standalone plugin.
+
+The rule is:
+
+- A service integration that only exists as a skill remains bundled inside `homelab-core`.
+- It does not get its own marketplace entry just because there is a `skills/<name>/` directory.
+- It becomes a standalone plugin only when we bundle additional plugin surface area with it, such as:
+  - agents
+  - commands
+  - hooks
+  - MCP servers
+  - output styles
+  - channels
+  - companion skills
+
+When that happens:
+
+- the integration moves to its own repository
+- it gets its own Claude/Codex plugin manifests
+- `marketplace.json` points at that external repo instead of treating it as part of `homelab-core`
+
+In other words, in-repo skill directories are part of `homelab-core` by default. Standalone marketplace plugins are reserved for integrations that have graduated into their own bundled plugin repo.
 
 ---
 
@@ -588,7 +614,7 @@ The bash path is for users who prefer a traditional install, want live-updating 
 ```
 
 It also:
-- Copies `lib/load-env.sh` → `~/.claude-homelab/load-env.sh`
+- Copies `scripts/load-env.sh` → `~/.claude-homelab/load-env.sh`
 - Creates `~/.claude-homelab/.env` from `.env.example` if the file doesn't exist yet
 - Skips existing valid symlinks (safe to re-run)
 - Warns about conflicts without overwriting
@@ -907,3 +933,17 @@ find ~/.claude/commands -maxdepth 1 -type l ! -e -delete
 **Repository:** https://github.com/jmagar/claude-homelab
 **Version:** 1.1.0
 **Last Updated:** 2026-03-21
+
+## MCP Plugin Repositories
+
+This marketplace also references standalone MCP plugin repositories:
+
+- [jmagar/axon](https://github.com/jmagar/axon)
+- [jmagar/gotify-mcp](https://github.com/jmagar/gotify-mcp)
+- [jmagar/unraid-mcp](https://github.com/jmagar/unraid-mcp)
+- [jmagar/overseerr-mcp](https://github.com/jmagar/overseerr-mcp)
+- [jmagar/unifi-mcp](https://github.com/jmagar/unifi-mcp)
+- [jmagar/syslog-mcp](https://github.com/jmagar/syslog-mcp)
+- [jmagar/arcane-mcp](https://github.com/jmagar/arcane-mcp)
+- [jmagar/synapse-mcp](https://github.com/jmagar/synapse-mcp)
+- [jmagar/swag-mcp](https://github.com/jmagar/swag-mcp)

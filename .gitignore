@@ -99,6 +99,9 @@ docker-compose.override.yml
 temp/
 tmp/
 
+# oh-my-claudecode state
+.omc/
+
 # Session and Documentation Directories
 .docs/
 .serena/
@@ -141,3 +144,10 @@ desktop.ini
 
 # Script Debug Files
 skills/*/scripts/*_debug.json
+
+# Lavra
+.lavra/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
