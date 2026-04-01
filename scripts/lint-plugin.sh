@@ -109,7 +109,7 @@ if [[ -f "$CLAUDE_PLUGIN" ]] && jq -e '.userConfig' "$CLAUDE_PLUGIN" >/dev/null 
     while IFS= read -r key; do
       MISSING=""
       for attr in type title description sensitive; do
-        if ! jq -e ".userConfig[\"$key\"].$attr" "$CLAUDE_PLUGIN" >/dev/null 2>&1; then
+        if ! jq -e ".userConfig[\"$key\"] | has(\"$attr\")" "$CLAUDE_PLUGIN" >/dev/null 2>&1; then
           MISSING="${MISSING:+$MISSING, }$attr"
         fi
       done
@@ -316,7 +316,6 @@ for req_file in \
   Justfile \
   entrypoint.sh \
   Dockerfile \
-  docker-compose.yaml \
   .dockerignore \
   .pre-commit-config.yaml; do
   if [[ -e "$PROJECT_DIR/$req_file" ]]; then
@@ -325,6 +324,13 @@ for req_file in \
     fail "$req_file" "Required file not found"
   fi
 done
+
+# docker-compose — accept both .yml and .yaml
+if [[ -f "$PROJECT_DIR/docker-compose.yml" || -f "$PROJECT_DIR/docker-compose.yaml" ]]; then
+  pass "docker-compose.yml/.yaml exists"
+else
+  fail "docker-compose.yml" "Required file not found (checked docker-compose.yml and docker-compose.yaml)"
+fi
 echo
 
 # ── 9. Symlinks — AGENTS.md and GEMINI.md → CLAUDE.md ────────────────────────
