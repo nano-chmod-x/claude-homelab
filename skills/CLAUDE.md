@@ -264,19 +264,10 @@ SERVICE2_API_KEY="key2"
 
 Bash:
 ```bash
-# Source the .env file
-if [[ -f ~/.claude-homelab/.env ]]; then
-    source ~/.claude-homelab/.env
-else
-    echo "ERROR: .env file not found at ~/.claude-homelab/.env" >&2
-    exit 1
-fi
-
-# Validate required variables
-if [[ -z "$SERVICE_URL" ]] || [[ -z "$SERVICE_API_KEY" ]]; then
-    echo "ERROR: SERVICE_URL and SERVICE_API_KEY must be set in .env" >&2
-    exit 1
-fi
+# Use the shared load-env library
+source ~/.claude-homelab/load-env.sh
+load_env_file || exit 1
+validate_env_vars "SERVICE_URL" "SERVICE_API_KEY"
 ```
 
 Node.js:
@@ -740,18 +731,6 @@ DEBUG=1 ./scripts/list.sh
 
 ## Adding New Skills
 
-**⚠️ CRITICAL: MANDATORY SKILL USAGE ⚠️**
-
-**YOU MUST use the plugin-dev:create-plugin skill (NOT optional) when:**
-- Creating ANY new skill in this directory
-- Need guidance on skill structure and conventions
-- Setting up SKILL.md, README.md, or scripts
-- Understanding skill development patterns
-
-**Failure to invoke this skill when creating new skills violates your operational requirements.**
-
----
-
 **Before creating a new skill, INVOKE `/plugin-dev:create-plugin` skill FIRST.**
 
 1. **Invoke plugin-dev:create-plugin:**
@@ -761,19 +740,25 @@ DEBUG=1 ./scripts/list.sh
    Creating skills without this skill is NOT allowed.
    ```
 
-2. **Create skill directory:**
+2. **Create a beads issue before writing code:**
+   ```bash
+   bd create --title="Add <service-name> skill" --type=feature --description="Why this skill is needed and what it should do"
+   bd update <id> --claim
+   ```
+
+3. **Create skill directory:**
    ```bash
    mkdir -p skills/service-name/{scripts,references}
    ```
 
-3. **Copy templates:**
+4. **Copy templates:**
    ```bash
    # Use existing skill as template
    cp skills/overseerr/SKILL.md skills/service-name/
    cp skills/overseerr/README.md skills/service-name/
    ```
 
-4. **Edit SKILL.md:**
+5. **Edit SKILL.md:**
    - Update YAML frontmatter (name, description)
    - Add mandatory skill invocation section (see Core Principles #1)
    - Update all sections with service-specific information
@@ -781,19 +766,19 @@ DEBUG=1 ./scripts/list.sh
    - Document all commands with examples
    - Include workflow decision trees
 
-4. **Edit README.md:**
+6. **Edit README.md:**
    - Update for user-facing documentation
    - More verbose explanations than SKILL.md
    - Include troubleshooting section
 
-5. **Create scripts:**
+7. **Create scripts:**
    - Use consistent naming (`service-api.sh` or `action.sh`)
    - Include shebangs and file headers
    - Implement error handling
    - Return JSON output
    - Support `--help` flag
 
-6. **Create references:**
+8. **Create references:**
    - Choose based on skill type:
      - `references/api-endpoints.md` — For REST API services
      - `references/command-reference.md` — For CLI tools
@@ -801,15 +786,15 @@ DEBUG=1 ./scripts/list.sh
    - `references/quick-reference.md` — Quick examples
    - `references/troubleshooting.md` — Common issues
 
-7. **Test thoroughly:**
+9. **Test thoroughly:**
    - Run all scripts manually
    - Verify JSON output
    - Test error conditions
    - Verify documentation completeness
 
-8. **Update this CLAUDE.md:**
-   - Add skill to "Current Skills" section
-   - Document any new patterns or conventions
+10. **Update skill catalog:**
+    - Add skill entry to `skills/references/skill-catalog.md`
+    - Close the beads issue: `bd close <id>`
 
 ## Multi-Instance Support
 
@@ -835,7 +820,8 @@ SERVICE3_API_KEY="key3"
 **Script implementation:**
 ```bash
 #!/bin/bash
-source ~/.claude-homelab/.env
+source ~/.claude-homelab/load-env.sh
+load_env_file || exit 1
 
 # Default to server 1 if SERVER_NUM not specified
 SERVER_NUM="${SERVER_NUM:-1}"
@@ -871,205 +857,11 @@ SERVER_NUM=3 ./scripts/command.sh
 
 ## Current Skills
 
-### Media Management
-
-#### overseerr
-Request movies and TV shows via Overseerr API.
-- **Path:** `skills/overseerr/`
-- **Type:** Read-Write (Safe)
-- **Scripts:** Node.js ESM (.mjs)
-- **Credentials:** `.env` (OVERSEERR_URL, OVERSEERR_API_KEY)
-- **Version:** 1.2.0
-- **Status:** ✅ Production ready
-
-#### sonarr
-Search and add TV shows to Sonarr library.
-- **Path:** `skills/sonarr/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (SONARR_URL, SONARR_API_KEY)
-- **Version:** 1.3.0
-- **Status:** ✅ Production ready
-
-#### radarr
-Search and add movies to Radarr library with collection support.
-- **Path:** `skills/radarr/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (RADARR_URL, RADARR_API_KEY)
-- **Version:** 1.3.0
-- **Status:** ✅ Production ready
-
-#### prowlarr
-Search indexers and manage Prowlarr.
-- **Path:** `skills/prowlarr/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (PROWLARR_URL, PROWLARR_API_KEY)
-- **Status:** ✅ Production ready
-
-#### plex
-Control Plex Media Server - browse, search, monitor sessions.
-- **Path:** `skills/plex/`
-- **Type:** Read-Only
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (PLEX_URL, PLEX_TOKEN)
-- **Version:** 1.3.0
-- **Status:** ✅ Production ready
-
-#### tautulli
-Monitor and analyze Plex Media Server usage via Tautulli analytics API.
-- **Path:** `skills/tautulli/`
-- **Type:** Read-Only
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (TAUTULLI_URL, TAUTULLI_API_KEY)
-- **Version:** 1.0.0
-- **Features:** Current activity, playback history, user statistics, library analytics, popular content, stream analytics, temporal trends
-- **Integration:** Complements `plex` skill with historical analytics and viewing trends
-- **Status:** ✅ Production ready
-
-### Download Clients
-
-#### qbittorrent
-Manage torrents with qBittorrent WebUI API.
-- **Path:** `skills/qbittorrent/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (QBITTORRENT_URL, QBITTORRENT_USERNAME, QBITTORRENT_PASSWORD)
-- **Status:** ✅ Production ready
-
-#### sabnzbd
-Manage NZB downloads with SABnzbd API.
-- **Path:** `skills/sabnzbd/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (SABNZBD_URL, SABNZBD_API_KEY)
-- **Status:** ✅ Production ready
-
-### Infrastructure
-
-#### unraid
-Query and monitor Unraid servers via GraphQL API.
-- **Path:** `skills/unraid/`
-- **Type:** Read-Only
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (UNRAID_URL, UNRAID_API_KEY)
-- **Status:** ✅ Production ready
-
-#### unifi
-Monitor UniFi network via local gateway API.
-- **Path:** `skills/unifi/`
-- **Type:** Read-Only
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (UNIFI_URL, UNIFI_USERNAME, UNIFI_PASSWORD, UNIFI_SITE)
-- **Version:** 1.2.0
-- **Status:** ✅ Production ready (migrated to .env)
-
-#### tailscale
-Manage Tailscale tailnet via CLI and API.
-- **Path:** `skills/tailscale/`
-- **Type:** Read-Write (Safe)
-- **Scripts:** CLI + Bash (.sh)
-- **Credentials:** `.env` (TAILSCALE_API_KEY, TAILSCALE_TAILNET)
-- **Status:** ✅ Production ready
-
-### Utilities
-
-#### gotify
-Send and receive push notifications.
-- **Path:** `skills/gotify/`
-- **Type:** Read-Write (Safe)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (GOTIFY_URL, GOTIFY_TOKEN)
-- **Version:** 1.3.0
-- **Status:** ✅ Production ready
-
-#### linkding
-Manage bookmarks with Linkding API.
-- **Path:** `skills/linkding/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (LINKDING_URL, LINKDING_API_KEY)
-- **Status:** ✅ Production ready
-
-#### memos
-Manage notes and memos in self-hosted Memos instance.
-- **Path:** `skills/memos/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (MEMOS_URL, MEMOS_API_TOKEN)
-- **Features:** Create/update/delete memos, search by content/tags, upload attachments, tag management
-- **Important:** Tags are parsed from content (#hashtag format), not separate field
-- **Version:** 1.1.0
-- **Status:** ✅ Production ready
-
-#### nugs
-Download and manage live music from Nugs.net.
-- **Path:** `skills/nugs/`
-- **Type:** Read-Write (Safe)
-- **Scripts:** Binary CLI (`/home/jmagar/workspace/nugs/nugs`)
-- **Credentials:** Config file `~/.nugs/config.json` (email, password, outPath, format)
-- **Features:** Browse 13,000+ concerts offline, download shows, gap detection, coverage tracking, auto-refresh
-- **Important:** Uses config file (not .env), supports rclone integration, requires FFmpeg for videos
-- **Version:** 1.0.0
-- **Status:** ✅ Production ready
-
-#### bytestash
-Manage code snippets in self-hosted ByteStash snippet storage service.
-- **Path:** `skills/bytestash/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (BYTESTASH_URL, BYTESTASH_API_KEY)
-- **Features:** Create/update/delete snippets, multi-file support, share management (public/protected/expiring), search, auto-categorization (30+ languages + context-aware patterns)
-- **Important:** Supports multi-fragment snippets for related files, share links with access control, intelligent category detection from filename patterns
-- **Version:** 1.1.0
-- **Status:** ✅ Production ready
-
-#### paperless-ngx
-Manage documents in self-hosted Paperless-ngx document management system.
-- **Path:** `skills/paperless-ngx/`
-- **Type:** Read-Write (Safe + Destructive)
-- **Scripts:** Bash (.sh)
-- **Credentials:** `.env` (PAPERLESS_URL, PAPERLESS_API_TOKEN)
-- **Features:** Upload documents with auto-OCR, full-text search, tag management, correspondent management, document metadata updates, bulk operations, archive/export, delete with confirmation
-- **Important:** Auto-OCR processing, supports tags/correspondents/document types for organization, bulk operations for multiple documents
-- **Version:** 1.0.0
-- **Status:** ✅ Production ready
-
-#### radicale
-Manage calendars and contacts on self-hosted Radicale CalDAV/CardDAV server.
-- **Path:** `skills/radicale/`
-- **Type:** Read-Write (calendars and contacts)
-- **Scripts:** Python (.py)
-- **Credentials:** `.env` (RADICALE_URL, RADICALE_USERNAME, RADICALE_PASSWORD)
-- **Features:** Calendar operations (list, create, search events), Contact operations (list, search, create contacts), Natural language parsing, ISO 8601 datetime support
-- **Libraries:** caldav, vobject, icalendar (install with: `pip install caldav vobject icalendar`)
-- **Protocols:** CalDAV (RFC 4791), CardDAV (RFC 6352)
-- **Important:** All RFC protocol documentation embedded in Firecrawl vector database for semantic search
-- **Version:** 1.0.0
-- **Status:** ✅ Production ready
+See [references/skill-catalog.md](references/skill-catalog.md) for the full catalog with paths, types, credentials, and status for all skills.
 
 ## Migration Checklist
 
-For existing skills that need updating to match current patterns:
-
-- [ ] SKILL.md has complete YAML frontmatter (name, description)
-- [ ] SKILL.md includes 5-10 trigger phrases in description
-- [ ] SKILL.md has all required sections (Purpose, Setup, Commands, Workflow, Notes, Reference)
-- [ ] README.md exists with user-facing documentation
-- [ ] Scripts have proper shebangs and file headers
-- [ ] Scripts are executable (`chmod +x`)
-- [ ] Scripts support `--help` flag
-- [ ] Scripts return JSON output where appropriate
-- [ ] **Migrated credentials from JSON config files to `.env`** (SERVICE_URL, SERVICE_API_KEY variables)
-- [ ] Removed `~/claude-homelab/credentials/<service>/` directory
-- [ ] Scripts load credentials from `.env` with validation
-- [ ] References directory exists with appropriate reference file (api-endpoints.md for REST APIs, command-reference.md for CLI tools), quick-reference.md, troubleshooting.md
-- [ ] Destructive operations require explicit confirmation
-- [ ] Workflow section includes decision trees
-- [ ] All commands have copy-paste examples
-- [ ] External links included in search results (TMDB, TVDB, etc.)
-- [ ] Updated this CLAUDE.md "Current Skills" section with `.env` credential format
+See [references/migration-checklist.md](references/migration-checklist.md) for the complete checklist of patterns to verify when updating existing skills.
 
 ## Best Practices
 
