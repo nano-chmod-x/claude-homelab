@@ -1,0 +1,44 @@
+name: Update Doc Mirrors
+
+on:
+  schedule:
+    - cron: '17 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-doc-mirrors
+  cancel-in-progress: true
+
+jobs:
+  update-doc-mirrors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Refresh mirrored docs
+        run: bash scripts/update-doc-mirrors.sh templates/my-plugin
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: |
+            templates/my-plugin
+          branch: chore/update-doc-mirrors
+          commit-message: "chore(docs): refresh mirrored docs"
+          title: "chore(docs): refresh mirrored docs"
+          body: |
+            Automated refresh of mirrored upstream docs under `templates/my-plugin`.
+
+            This PR was created by `.github/workflows/update-doc-mirrors.yaml`.
+          delete-branch: true

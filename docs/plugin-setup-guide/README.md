@@ -18,8 +18,10 @@ Recommended destination docs:
   - Exact section-by-section move map from the original guide.
 
 Planned destination structure:
-- `templates/my-plugin/`
-  - Authoring templates for plugin repos.
+- `~/workspace/plugin-templates/`
+  - Canonical authoring template repo.
+  - Shared plugin-contract assets live at repo root.
+  - Language-specific runtime and toolchain files live under `py/`, `ts/`, and `rs/`.
 - `docs/plugin-setup-guide/README.md`
   - High-level migration contract and navigation.
 - `docs/plugin-setup-guide/migration-map.md`

@@ -13,6 +13,7 @@ Claude Code skills, agents, and commands for self-hosted homelab service managem
 - [After Install: First-Time Setup](#after-install-first-time-setup)
 - [Credential Management](#credential-management)
 - [Service Plugins](#service-plugins)
+- [Skill vs Plugin Boundary](#skill-vs-plugin-boundary)
 - [Homelab-Core: What Gets Installed](#homelab-core-what-gets-installed)
   - [Skills](#skills)
   - [Agents](#agents)
@@ -231,6 +232,31 @@ load_service_credentials "plex" "PLEX_URL" "PLEX_TOKEN"
 - **Plugin path**: `setup-creds.sh` copies it (from the repo if available, or fetches from GitHub)
 
 The canonical source is `scripts/load-env.sh` in this repo. If you need to update it, edit the source there and re-run `setup-symlinks.sh` (bash path) or `setup-creds.sh` (plugin path).
+
+## Skill vs Plugin Boundary
+
+Not every service integration in this repo is a standalone plugin.
+
+The rule is:
+
+- A service integration that only exists as a skill remains bundled inside `homelab-core`.
+- It does not get its own marketplace entry just because there is a `skills/<name>/` directory.
+- It becomes a standalone plugin only when we bundle additional plugin surface area with it, such as:
+  - agents
+  - commands
+  - hooks
+  - MCP servers
+  - output styles
+  - channels
+  - companion skills
+
+When that happens:
+
+- the integration moves to its own repository
+- it gets its own Claude/Codex plugin manifests
+- `marketplace.json` points at that external repo instead of treating it as part of `homelab-core`
+
+In other words, in-repo skill directories are part of `homelab-core` by default. Standalone marketplace plugins are reserved for integrations that have graduated into their own bundled plugin repo.
 
 ---
 

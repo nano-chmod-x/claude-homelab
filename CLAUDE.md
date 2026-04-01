@@ -434,7 +434,7 @@ See `skills/CLAUDE.md` for detailed skill development guidelines.
 
 3. **Follow the skill template:**
    - Copy structure from existing skill
-   - Update SKILL.md frontmatter (name, version, description)
+   - Update SKILL.md frontmatter (`name`, `description`, plus any validator-supported optional fields)
    - Add mandatory skill invocation section
    - Document all commands with examples
    - Include workflow decision trees
@@ -773,7 +773,8 @@ bash -x ./scripts/script.sh
 
 ### Semantic Versioning
 
-Skills use semantic versioning (MAJOR.MINOR.PATCH):
+Plugin and release artifacts use semantic versioning (MAJOR.MINOR.PATCH). Do not add a `version`
+field to `SKILL.md` frontmatter unless the active skill schema explicitly supports it.
 
 - **MAJOR** (x.0.0): Breaking changes, removed features
 - **MINOR** (1.x.0): New features, enhancements (backward compatible)
@@ -782,13 +783,13 @@ Skills use semantic versioning (MAJOR.MINOR.PATCH):
 ### Version Bump Examples
 
 ```yaml
-# Adding new feature
+# Adding new feature in plugin/package manifests
 version: 1.1.0 → 1.2.0  # MINOR bump
 
-# Fixing bug
+# Fixing bug in plugin/package manifests
 version: 1.1.0 → 1.1.1  # PATCH bump
 
-# Breaking API change
+# Breaking API change in plugin/package manifests
 version: 1.2.0 → 2.0.0  # MAJOR bump
 ```
 

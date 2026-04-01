@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 - Detailed plugin setup guide for MCP-server-backed plugins
 - Engineering principles section: Research → Plan → Validate → Implement loop
 - Context and token efficiency section: tool count, pagination, schema surface area guidance
+- `.codex/` and `.github/` top-level directories
+- `scripts/update-doc-mirrors.sh` utility
 
 ### Fixed
 - Marketplace `source` field for external GitHub plugins now uses correct object format `{"source": "github", "repo": "owner/repo"}`
@@ -20,6 +22,13 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Plugin setup guide: destructive tool actions now require `confirm=true` parameter
+- Migrate all service skills from `service-plugins/` to `skills/` (flat structure)
+- Remove `templates/my-plugin/` — template content moved to standalone `plugin-templates` repo
+- Remove `scripts/homelab/` legacy orchestration scripts (superseded by skills)
+- Remove `prompts/` directory (commands moved to `commands/`)
+- Remove `skills/setup/` (merged into homelab-core plugin)
+- Update `CLAUDE.md` with current architecture and beads workflow
+- Update `README.md` to reflect restructured layout
 
 ## [1.1.2] - 2026-03-29
 
