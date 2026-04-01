@@ -21,6 +21,10 @@ All notable changes to this project will be documented in this file.
 - Plugin setup guide: fix directory name placeholder (`repo-root/` → `my-service-mcp/`)
 
 ### Changed
+- `skills/CLAUDE.md`: extract skill catalog and migration checklist to `skills/references/`, remove duplicate mandatory-invocation block, fix `load-env.sh` credential pattern, add `bd create` step to new-skill workflow (1124→915 lines)
+- `CLAUDE.md`: compress auto-injected Beads/Session sections to 2 lines (hooks already inject this context)
+- `~/.claude/CLAUDE.md`: clarify "Refer to CLAUDE.md" → explicit `~/CLAUDE.md` path
+- `~/CLAUDE.md` (RTK): add Installation section with binary path and PATH fallback note
 - Plugin setup guide: destructive tool actions now require `confirm=true` parameter
 - Migrate all service skills from `service-plugins/` to `skills/` (flat structure)
 - Remove `templates/my-plugin/` — template content moved to standalone `plugin-templates` repo
