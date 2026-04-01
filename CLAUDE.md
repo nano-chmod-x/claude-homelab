@@ -61,7 +61,7 @@ This repository provides production-ready integrations for self-hosted homelab s
 - **Bash path** (`curl -sSL .../install.sh | bash`) — symlinks into `~/.claude/`
 
 - **homelab-core plugin** — agents, commands, setup wizard, health dashboard (repo root IS the plugin)
-- **Service plugins** (`service-plugins/`) — 21 service plugins, each independently installable (22 total including homelab-core)
+- **Service skills** (`skills/`) — 22 service integrations; each skill directory is independently usable
 - **Shared library** (`scripts/load-env.sh`) — credential loading, installed to `~/.claude-homelab/`
 
 ## Repository Structure
@@ -82,29 +82,29 @@ claude-homelab/
 │   └── notebooklm-specialist.md
 │
 ├── commands/                        # homelab-core slash commands
-│   ├── agentic-research.md          # /agentic-research
+│   ├── check.md                     # /check
+│   ├── quick-push.md                # /quick-push
+│   ├── save-to-md.md                # /save-to-md
+│   ├── setup-homelab.md             # /setup-homelab
+│   ├── validate-plan.md             # /validate-plan
 │   ├── homelab/                     # /homelab:system-resources, docker-health, disk-space, zfs-health
 │   └── notebooklm/                  # /notebooklm:create, ask, source, generate, download, list, research
 │
-├── skills/                          # homelab-core skills (NOT service plugins)
+├── skills/                          # All service skills (22 services + homelab-core)
+│   ├── CLAUDE.md                    # Skill development guidelines
 │   ├── setup/SKILL.md               # /homelab-core:setup — interactive credential wizard
-│   └── health/
-│       ├── SKILL.md                 # /homelab-core:health — service health dashboard
-│       └── scripts/check-health.sh # Curl-checks all services, outputs JSON
-│
-├── service-plugins/                 # Per-service plugins (21 services)
+│   ├── health/
+│   │   ├── SKILL.md                 # /homelab-core:health — service health dashboard
+│   │   └── scripts/check-health.sh # Curl-checks all services, outputs JSON
 │   └── [service]/                   # e.g., plex/, radarr/, unraid/, ...
-│       ├── .claude-plugin/
-│       │   └── plugin.json          # Plugin manifest
-│       ├── skills/[service]/
-│       │   └── SKILL.md             # Skill definition at correct spec path
+│       ├── SKILL.md                 # Skill definition
 │       ├── scripts/                 # Bash/Python/Node API scripts
 │       └── references/              # API docs, quick-reference, troubleshooting
 │
 └── scripts/                         # Install and maintenance scripts
     ├── install.sh                   # Bash path entry point
     ├── setup-creds.sh               # Creates ~/.claude-homelab/.env (both paths)
-    ├── setup-symlinks.sh            # Bash path: symlinks service-plugins/ → ~/.claude/skills/
+    ├── setup-symlinks.sh            # Bash path: symlinks skills/ → ~/.claude/skills/
     └── verify.sh                    # Dual-path verification (exits 0 if clean)
 ```
 
@@ -126,11 +126,15 @@ Bash path only — plugin path uses `~/.claude/plugins/cache/`, no symlinks.
 │   ├── firecrawl-specialist.md  → ~/claude-homelab/agents/firecrawl-specialist.md
 │   └── notebooklm-specialist.md → ~/claude-homelab/agents/notebooklm-specialist.md
 ├── skills/
-│   ├── plex/                    → ~/claude-homelab/service-plugins/plex/
-│   ├── radarr/                  → ~/claude-homelab/service-plugins/radarr/
-│   └── ...                      (all 22 service-plugins/)
+│   ├── plex/                    → ~/claude-homelab/skills/plex/
+│   ├── radarr/                  → ~/claude-homelab/skills/radarr/
+│   └── ...                      (all 22 service skills)
 └── commands/
-    ├── agentic-research.md      → ~/claude-homelab/commands/agentic-research.md
+    ├── check.md                 → ~/claude-homelab/commands/check.md
+    ├── quick-push.md            → ~/claude-homelab/commands/quick-push.md
+    ├── save-to-md.md            → ~/claude-homelab/commands/save-to-md.md
+    ├── setup-homelab.md         → ~/claude-homelab/commands/setup-homelab.md
+    ├── validate-plan.md         → ~/claude-homelab/commands/validate-plan.md
     ├── homelab/                 → ~/claude-homelab/commands/homelab/
     └── notebooklm/              → ~/claude-homelab/commands/notebooklm/
 
@@ -172,11 +176,11 @@ Key fields:
 
 ### Adding New Symlinks
 
-Service plugins live in `service-plugins/`, not `skills/`. When adding a new service plugin:
+Service skills live in `skills/`. When adding a new service skill:
 
 ```bash
-# New service plugin (directory symlink)
-ln -sf ~/claude-homelab/service-plugins/new-service ~/.claude/skills/new-service
+# New service skill (directory symlink)
+ln -sf ~/claude-homelab/skills/new-service ~/.claude/skills/new-service
 
 # New agent (file symlink)
 ln -sf ~/claude-homelab/agents/new-agent.md ~/.claude/agents/new-agent.md
@@ -202,7 +206,7 @@ Run the setup script to create all required symlinks automatically:
 
 The setup script:
 - Creates `~/.claude/` directories if missing
-- Symlinks all `service-plugins/*/` → `~/.claude/skills/`
+- Symlinks all `skills/*/` → `~/.claude/skills/`
 - Symlinks all `agents/*.md` → `~/.claude/agents/`
 - Symlinks all `commands/` files/dirs → `~/.claude/commands/`
 - Copies `scripts/load-env.sh` → `~/.claude-homelab/load-env.sh`
@@ -313,13 +317,25 @@ load_service_credentials "service-name" "URL_VAR" "API_KEY_VAR"
 
 ### 3. Directory Organization
 
-**Service plugins** — In `service-plugins/`, one directory per service:
-- Each plugin at `service-plugins/<name>/` with `.claude-plugin/plugin.json` and `skills/<name>/SKILL.md`
-- This is the correct location for all service-specific skills (NOT `skills/`)
+**Skill vs plugin boundary**
 
-**homelab-core skills** — In `skills/` at repo root:
-- Only two skills live here: `skills/setup/` and `skills/health/`
-- These are homelab-core's own skills, not service plugins
+- A directory under `skills/` does not automatically become a standalone plugin.
+- Skill-only integrations remain bundled with `homelab-core`.
+- Do not add a bundled in-repo skill directly to `marketplace.json` as its own plugin entry.
+- A service integration becomes a standalone plugin only when it gains additional bundled plugin surface area, such as:
+  - agents
+  - commands
+  - hooks
+  - MCP servers
+  - output styles
+  - channels
+  - companion skills
+- At that point, it should move to its own repository and be referenced from the Claude and Codex marketplace manifests as an external repo-sourced plugin.
+
+**Service skills** — In `skills/`, one directory per service:
+- Each service at `skills/<name>/` with `SKILL.md`, `scripts/`, and `references/`
+- homelab-core's own skills (`setup/`, `health/`) also live here
+- All service-specific skills belong here (22 services total)
 
 **Agents** — Specialized AI agents in `agents/`:
 - Markdown files defining agent behavior
@@ -786,7 +802,7 @@ version: 1.2.0 → 2.0.0  # MAJOR bump
 ---
 
 **Version:** 1.1.0
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-03-31
 **Changelog:**
 - Added Table of Contents
 - Added Glossary section
