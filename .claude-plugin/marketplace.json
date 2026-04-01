@@ -176,6 +176,28 @@
       "homepage": "https://github.com/jmagar/syslog-mcp"
     },
     {
+      "name": "plugin-templates",
+      "source": {
+        "source": "github",
+        "repo": "jmagar/plugin-templates"
+      },
+      "description": "Agents, commands, skills, and scripts for scaffolding, reviewing, aligning, and deploying homelab MCP server plugins. Includes canonical Python, TypeScript, and Rust server templates.",
+      "version": "1.0.0",
+      "category": "dev-tools",
+      "tags": [
+        "scaffolding",
+        "templates",
+        "mcp",
+        "plugin-dev",
+        "python",
+        "typescript",
+        "rust",
+        "agents",
+        "ci-cd"
+      ],
+      "homepage": "https://github.com/jmagar/plugin-templates"
+    },
+    {
       "name": "axon",
       "source": {
         "source": "github",
