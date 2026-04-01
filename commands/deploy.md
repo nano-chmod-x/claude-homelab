@@ -1,36 +1,38 @@
 ---
-description: Deploy services via docker compose (auto-detects compose variant)
-argument-hint: [path/to/docker-compose.yml]
+description: Deploy all MCP plugin servers from .claude-plugin/marketplace.json
+argument-hint: [plugin-name]
 allowed-tools: Bash
 ---
 
-Deploy using docker compose. Arguments (if provided): $ARGUMENTS
+Deploy MCP plugin servers defined in the homelab marketplace. Arguments (if provided): $ARGUMENTS
+
+The marketplace lives at: `!cat ~/.claude/plugins/marketplaces/claude-homelab/.claude-plugin/marketplace.json 2>/dev/null || cat ~/claude-homelab/.claude-plugin/marketplace.json`
 
 ## Instructions
 
-1. **Determine working directory**
-   - If arguments include a path to a `docker-compose.yml` or `compose.yml`, use its parent directory
-   - Otherwise use the current directory
+1. **Parse the marketplace** to get the list of external plugins (those with `source.source == "github"`). Extract `name` and `version` for each.
 
-2. **Detect docker compose variant** (in this order):
-   - `docker compose version` — Docker Compose v2 plugin (preferred)
-   - `docker-compose version` — Docker Compose v1 standalone
+2. **Detect docker compose variant**:
+   - `docker compose version` → use `docker compose`
+   - `docker-compose version` → use `docker-compose`
    - If neither found, report error and stop
 
-3. **Confirm a compose file exists** in the target directory:
-   - `docker-compose.yml`, `docker-compose.yaml`, `compose.yml`, or `compose.yaml`
-   - If none found, report error listing what was checked
+3. **Determine which plugins to deploy**:
+   - If `$ARGUMENTS` is a plugin name (e.g. `synapse-mcp`, `axon`), deploy only that one
+   - If no arguments, deploy **all** external plugins from the marketplace
 
-4. **Run the deploy**:
+4. **For each plugin to deploy**:
+   - Find its compose file at: `~/.claude/plugins/cache/claude-homelab/<name>/<version>/docker-compose.yaml` (also check `.yml` variants)
+   - Skip `tests/` subdirectory compose files
+   - If compose file not found, warn and skip that plugin — do not stop
+
+5. **Run the deploy** from each compose file's parent directory:
    ```bash
-   # v2
+   cd ~/.claude/plugins/cache/claude-homelab/<name>/<version>
    docker compose up --build -d
-
-   # v1 fallback
-   docker-compose up --build -d
    ```
-   If a specific file path was provided via arguments, pass `-f <path>` to the command.
 
-5. **Report result**:
-   - On success: list running containers with `docker compose ps` (or `docker-compose ps`)
-   - On failure: show the last 30 lines of output and suggest common fixes (missing env vars, port conflicts, image pull errors)
+6. **Report results** as a table:
+   - Plugin name | Status (✓ up / ✗ failed / ⚠ skipped) | Notes
+   - On any failure: show last 20 lines of that plugin's output
+   - At the end: run `docker compose ps` in each successfully deployed directory to show running containers
