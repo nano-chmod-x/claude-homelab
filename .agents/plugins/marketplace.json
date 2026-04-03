@@ -77,18 +77,6 @@
       "category": "Research"
     },
     {
-      "name": "nugs",
-      "source": {
-        "source": "local",
-        "path": "./skills/nugs"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Media"
-    },
-    {
       "name": "paperless-ngx",
       "source": {
         "source": "local",

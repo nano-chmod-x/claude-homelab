@@ -123,7 +123,7 @@
         "repo": "jmagar/synapse-mcp"
       },
       "description": "MCP server providing Flux (Docker management) and Scout (SSH operations) tools for homelab infrastructure.",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "category": "infrastructure",
       "tags": [
         "synapse",

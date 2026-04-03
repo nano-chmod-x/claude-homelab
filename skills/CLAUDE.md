@@ -270,23 +270,7 @@ load_env_file || exit 1
 validate_env_vars "SERVICE_URL" "SERVICE_API_KEY"
 ```
 
-Node.js:
-```javascript
-import { readFile } from 'fs/promises';
-
-async function loadEnv() {
-    const envPath = `${process.env.HOME}/.claude-homelab/.env`;
-    const content = await readFile(envPath, 'utf8');
-
-    for (const line of content.split('\n')) {
-        const match = line.match(/^([^#=]+)=(.+)$/);
-        if (match) {
-            const [, key, value] = match;
-            process.env[key.trim()] = value.trim().replace(/^["']|["']$/g, '');
-        }
-    }
-}
-```
+Node.js: See the full `loadEnv()` pattern in [Script Standards > Node.js Scripts](#nodejs-scripts-mjs) below.
 
 **Security requirements:**
 - ✅ `.env` file is gitignored (NEVER commit)
@@ -857,11 +841,7 @@ SERVER_NUM=3 ./scripts/command.sh
 
 ## Current Skills
 
-See [references/skill-catalog.md](references/skill-catalog.md) for the full catalog with paths, types, credentials, and status for all skills.
-
-## Migration Checklist
-
-See [references/migration-checklist.md](references/migration-checklist.md) for the complete checklist of patterns to verify when updating existing skills.
+Run `ls skills/` to see all available skill directories. Each directory contains a `SKILL.md` with its definition.
 
 ## Best Practices
 

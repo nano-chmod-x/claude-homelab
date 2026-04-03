@@ -27,7 +27,7 @@ This repository currently serves three roles:
 
 This repo gives you a mix of local Claude plugins and external MCP-backed plugins for common homelab tasks:
 
-- Media management: Plex, Radarr, Sonarr, Prowlarr, Tautulli, Nugs
+- Media management: Plex, Radarr, Sonarr, Prowlarr, Tautulli
 - Downloads: qBittorrent, SABnzbd
 - Infrastructure: Tailscale, ZFS, plus external Unraid and UniFi MCP plugins
 - Utilities: Linkding, Memos, ByteStash, Paperless-ngx, Radicale, plus external Gotify MCP plugin
@@ -75,7 +75,6 @@ Install any local skill plugins you actually use:
 /plugin install bytestash@jmagar-claude-homelab
 /plugin install paperless-ngx@jmagar-claude-homelab
 /plugin install radicale@jmagar-claude-homelab
-/plugin install nugs@jmagar-claude-homelab
 /plugin install notebooklm@jmagar-claude-homelab
 /plugin install gh-address-comments@jmagar-claude-homelab
 ```
@@ -171,13 +170,12 @@ TAILSCALE_TAILNET=your_tailnet_or_dash
 
 Special cases:
 
-- `nugs` uses `~/.nugs/config.json`, not `.env`
 - `zfs` uses local CLI access and does not require API credentials
 - external MCP plugins may have their own runtime requirements depending on their repo
 
 ## Plugin Catalog
 
-The marketplace currently exposes 28 plugins in three groups.
+The marketplace currently exposes 27 plugins in three groups.
 
 ### Core Plugin
 
@@ -192,7 +190,6 @@ These point at local directories under [`skills/`](skills/):
 - `linkding`
 - `memos`
 - `notebooklm`
-- `nugs`
 - `paperless-ngx`
 - `plex`
 - `prowlarr`
@@ -235,12 +232,7 @@ Examples:
 - `radicale`: manage CalDAV and CardDAV data
 - `notebooklm`: drive the NotebookLM CLI workflows
 
-Some skill directories also contain local plugin manifests that are not currently used by marketplace entries because the marketplace prefers the external MCP version for that integration. That is true today for:
-
-- `overseerr`
-- `unraid`
-- `unifi`
-- `gotify`
+The marketplace prefers the external MCP version for integrations like Overseerr, Unraid, UniFi, and Gotify. Those services do not have local skill directories in this repo.
 
 ## Homelab-Core
 
@@ -250,14 +242,11 @@ The root plugin manifest is [`.claude-plugin/plugin.json`](.claude-plugin/plugin
 
 - agents from [`agents/`](agents/)
 - slash commands from [`commands/`](commands/)
-- the setup skill at [`skills/setup/SKILL.md`](skills/setup/SKILL.md)
-- the health skill at [`skills/health/SKILL.md`](skills/health/SKILL.md)
+- the setup skill at [`skills/homelab-setup/SKILL.md`](skills/homelab-setup/SKILL.md)
+- the health skill at [`skills/homelab-health/SKILL.md`](skills/homelab-health/SKILL.md)
 
 ### Agents
 
-- `agentic-orchestrator`
-- `exa-specialist`
-- `firecrawl-specialist`
 - `notebooklm-specialist`
 
 ### Commands
@@ -268,7 +257,6 @@ Top-level commands currently present:
 - `/deploy`
 - `/quick-push`
 - `/save-to-md`
-- `/validate-plan`
 
 Namespaced commands currently present:
 
@@ -288,7 +276,7 @@ Namespaced commands currently present:
 
 The restored core setup skill is:
 
-- [`skills/setup/SKILL.md`](skills/setup/SKILL.md)
+- [`skills/homelab-setup/SKILL.md`](skills/homelab-setup/SKILL.md)
 
 It guides the user through:
 
@@ -301,11 +289,11 @@ It guides the user through:
 
 The shipped core skill is:
 
-- [`skills/health/SKILL.md`](skills/health/SKILL.md)
+- [`skills/homelab-health/SKILL.md`](skills/homelab-health/SKILL.md)
 
 Its backing script is:
 
-- [`skills/health/scripts/check-health.sh`](skills/health/scripts/check-health.sh)
+- [`skills/homelab-health/scripts/check-health.sh`](skills/homelab-health/scripts/check-health.sh)
 
 The health checker:
 
@@ -322,11 +310,18 @@ Current structure:
 claude-homelab/
 ├── .claude-plugin/
 │   ├── marketplace.json
-│   └── plugin.json
+│   ├── plugin.json
+│   └── README.md
 ├── agents/
+├── bin/
 ├── commands/
 │   ├── homelab/
 │   └── notebooklm/
+├── hooks/
+├── output-styles/
+├── prompts/
+│   └── homelab/
+├── references/
 ├── scripts/
 │   ├── install.sh
 │   ├── load-env.sh
@@ -334,21 +329,22 @@ claude-homelab/
 │   ├── setup-symlinks.sh
 │   └── verify.sh
 ├── skills/
-│   ├── health/
-│   ├── references/
+│   ├── homelab-health/
+│   ├── homelab-setup/
 │   └── <service>/
-│       ├── .claude-plugin/plugin.json
+│       ├── SKILL.md
 │       ├── README.md
+│       ├── load-env.sh
 │       ├── references/
-│       └── skills/<service>/SKILL.md
+│       └── scripts/
 └── .env.example
 ```
 
 Important current facts:
 
-- there is no `service-plugins/` directory in this repo
 - `scripts/load-env.sh` is the shared env helper, not `lib/load-env.sh`
 - service plugin roots now live directly under `skills/<name>/`
+- SKILL.md is at the root of each skill directory, not nested
 
 ## Marketplace Layout
 
@@ -389,7 +385,7 @@ It also:
 - copies [`scripts/load-env.sh`](scripts/load-env.sh) to `~/.claude-homelab/load-env.sh`
 - creates `~/.claude-homelab/.env` from [`.env.example`](.env.example) if missing
 
-Because the symlink script operates on the current top-level `skills/` tree, its behavior follows the repo as it exists now, not the older `service-plugins/` layout.
+Because the symlink script operates on the current top-level `skills/` tree, its behavior follows the repo as it exists now.
 
 ## Verification
 
@@ -407,9 +403,9 @@ The verifier currently checks:
 - marketplace JSON validity
 - whether local marketplace source paths exist
 - whether root `.claude-plugin/plugin.json` exists
-- whether `skills/setup/SKILL.md` exists
-- whether `skills/health/SKILL.md` exists
-- whether `skills/health/scripts/check-health.sh` is executable
+- whether `skills/homelab-setup/SKILL.md` exists
+- whether `skills/homelab-health/SKILL.md` exists
+- whether `skills/homelab-health/scripts/check-health.sh` is executable
 
 With the setup skill restored, that core-skill check should now pass in a normal repo checkout.
 
@@ -423,10 +419,11 @@ A local plugin root currently looks like:
 
 ```text
 skills/myservice/
-├── .claude-plugin/plugin.json
+├── SKILL.md
 ├── README.md
+├── load-env.sh
 ├── references/
-└── skills/myservice/SKILL.md
+└── scripts/
 ```
 
 To expose it in the marketplace, add an entry to [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) similar to:
@@ -510,7 +507,7 @@ Then restart Claude Code.
 
 ### `verify.sh` reports a core setup skill error
 
-If that happens again, check that [`skills/setup/SKILL.md`](skills/setup/SKILL.md) exists in your checkout and that you are on the expected branch.
+If that happens again, check that [`skills/homelab-setup/SKILL.md`](skills/homelab-setup/SKILL.md) exists in your checkout and that you are on the expected branch.
 
 ## References
 
@@ -531,5 +528,5 @@ If that happens again, check that [`skills/setup/SKILL.md`](skills/setup/SKILL.m
 - [jmagar/swag-mcp](https://github.com/jmagar/swag-mcp)
 - [jmagar/plugin-lab](https://github.com/jmagar/plugin-lab)
 
-Version: 1.2.0
-Last Updated: 2026-04-02
+Version: 1.3.0
+Last Updated: 2026-04-03

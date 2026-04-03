@@ -1,9 +1,21 @@
 {
   "name": "homelab-core",
   "description": "Core homelab agents, commands, and setup/health skills for self-hosted service management. Includes interactive credential setup wizard and unified service health dashboard.",
-  "version": "1.1.3",
+  "version": "1.3.0",
   "author": {
-    "name": "jmagar",
+    "name": "Jacob Magar",
     "email": "jmagar@users.noreply.github.com"
-  }
+  },
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "license": "MIT",
+  "keywords": [
+    "homelab",
+    "agents",
+    "commands",
+    "skills",
+    "orchestration",
+    "setup",
+    "health"
+  ]
 }

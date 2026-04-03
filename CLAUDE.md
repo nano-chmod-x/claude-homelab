@@ -81,6 +81,26 @@ claude-homelab/
     └── verify.sh                    # Dual-path verification (exits 0 if clean)
 ```
 
+## Marketplace Repos
+
+The `claude-homelab` marketplace (`.claude-plugin/marketplace.json`) encompasses 11 repositories — 1 core mono-repo plus 10 external plugin repos:
+
+| # | Plugin | Repo | Local Path | Category |
+|---|--------|------|------------|----------|
+| 1 | **homelab-core** | [jmagar/claude-homelab](https://github.com/jmagar/claude-homelab) | `~/claude-homelab` (this repo) | core |
+| 2 | **overseerr-mcp** | [jmagar/overseerr-mcp](https://github.com/jmagar/overseerr-mcp) | `~/workspace/overseerr-mcp` | media |
+| 3 | **unraid-mcp** | [jmagar/unraid-mcp](https://github.com/jmagar/unraid-mcp) | `~/workspace/unraid-mcp` | infrastructure |
+| 4 | **unifi-mcp** | [jmagar/unifi-mcp](https://github.com/jmagar/unifi-mcp) | `~/workspace/unifi-mcp` | infrastructure |
+| 5 | **gotify-mcp** | [jmagar/gotify-mcp](https://github.com/jmagar/gotify-mcp) | `~/workspace/gotify-mcp` | utilities |
+| 6 | **swag-mcp** | [jmagar/swag-mcp](https://github.com/jmagar/swag-mcp) | `~/workspace/swag-mcp` | infrastructure |
+| 7 | **synapse-mcp** | [jmagar/synapse-mcp](https://github.com/jmagar/synapse-mcp) | `~/workspace/synapse-mcp` | infrastructure |
+| 8 | **arcane-mcp** | [jmagar/arcane-mcp](https://github.com/jmagar/arcane-mcp) | `~/workspace/arcane-mcp` | infrastructure |
+| 9 | **syslog-mcp** | [jmagar/syslog-mcp](https://github.com/jmagar/syslog-mcp) | `~/workspace/syslog-mcp` | infrastructure |
+| 10 | **plugin-lab** | [jmagar/plugin-lab](https://github.com/jmagar/plugin-lab) | `~/workspace/plugin-lab` | dev-tools |
+| 11 | **axon** | [jmagar/axon](https://github.com/jmagar/axon) | `~/workspace/axon_rust` | research |
+
+The remaining 16 marketplace entries (bytestash, gh-address-comments, linkding, memos, notebooklm, paperless-ngx, plex, prowlarr, qbittorrent, radarr, radicale, sabnzbd, sonarr, tailscale, tautulli, zfs) are **bundled skill-only** plugins sourced from `./skills/*` within this repo. They graduate to their own external repo when they gain additional plugin surface area (agents, commands, MCP servers, etc.).
+
 ## Source of Truth
 
 **This repository (`~/claude-homelab`) is the single source of truth for all homelab agents, skills, and commands.**
@@ -629,7 +649,7 @@ version: 1.2.0 → 2.0.0  # MAJOR bump
 
 ---
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Last Updated:** 2026-04-03
 **Changelog:**
 - Fixed stale agent count (4 → 1), skill count (22 → 18), plugin count (23 → 27)
@@ -664,5 +684,8 @@ Bump type is determined by the commit message prefix:
 - `.claude-plugin/plugin.json` — `"version": "X.Y.Z"`
 - `.codex-plugin/plugin.json` — `"version": "X.Y.Z"`
 - `gemini-extension.json` — `"version": "X.Y.Z"`
+- `README.md` — version badge or header
+- `CHANGELOG.md` — new entry under the bumped version
 
 All files MUST have the same version. Never bump only one file.
+CHANGELOG.md must have an entry for every version bump.

@@ -40,7 +40,6 @@ A comprehensive collection of Claude Code skills and agents for homelab service 
 - **bytestash** - Code snippet storage
 - **paperless-ngx** - Document management with OCR
 - **radicale** - CalDAV/CardDAV server
-- **nugs** - Live music downloads from Nugs.net
 
 #### 🔍 Research & AI (5 skills)
 - **firecrawl** - Web scraping with RAG capabilities
