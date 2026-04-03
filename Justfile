@@ -469,38 +469,239 @@ plugins:
 
 # ─── Skill Validation ────────────────────────────────────────────────
 
-# Validate all skills under skills/
+# Validate all skills across all marketplace plugins
 validate-skills:
     #!/usr/bin/env bash
     set -euo pipefail
-    pass=0
-    fail=0
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    pass=0; fail=0; skip=0
     errors=()
-    while IFS= read -r skill_dir; do
-        name=$(basename "$skill_dir")
-        # Only validate dirs that contain a SKILL.md
-        [[ ! -f "$skill_dir/SKILL.md" ]] && continue
-        echo "── $name"
-        if output=$(npx skills-ref validate "$skill_dir" 2>&1); then
-            echo "   PASS"
-            pass=$((pass + 1))
-        else
-            echo "   FAIL"
-            echo "$output" | sed 's/^/   /'
-            fail=$((fail + 1))
-            errors+=("$name")
+
+    validate_dir() {
+        local plugin="$1" dir="$2"
+        local found=false
+        while IFS= read -r skill_dir; do
+            [[ ! -f "$skill_dir/SKILL.md" ]] && continue
+            found=true
+            local name
+            name="$plugin/$(basename "$skill_dir")"
+            echo "── $name"
+            if output=$(npx skills-ref validate "$skill_dir" 2>&1); then
+                echo "   PASS"
+                pass=$((pass + 1))
+            else
+                echo "   FAIL"
+                echo "$output" | sed 's/^/   /'
+                fail=$((fail + 1))
+                errors+=("$name")
+            fi
+        done < <(find "$dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+        if ! $found; then
+            skip=$((skip + 1))
         fi
-    done < <(find skills -mindepth 1 -maxdepth 1 -type d | sort)
+    }
+
+    # Local skills in this repo
+    echo "═══ homelab-core (local) ═══"
+    validate_dir "homelab-core" "skills"
     echo ""
-    echo "Results: $pass passed, $fail failed"
+
+    # External marketplace plugins
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        skills_dir="$dir/skills"
+        if [[ ! -d "$skills_dir" ]]; then
+            skip=$((skip + 1))
+            continue
+        fi
+        echo "═══ $plugin ($dir) ═══"
+        validate_dir "$plugin" "$skills_dir"
+        echo ""
+    done
+
+    total=$((pass + fail))
+    echo "Results: $pass passed, $fail failed, $skip plugins with no skills ($total total)"
     if [[ $fail -gt 0 ]]; then
         echo "Failed: ${errors[*]}"
         exit 1
     fi
 
-# Validate a single skill by name
+# Validate a single skill (local: "plex", external: "jmagar/synapse-mcp/synapse")
 validate-skill name:
-    npx skills-ref validate "skills/{{name}}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    input="{{name}}"
+    declare -A overrides=(["jmagar/axon"]="$HOME/workspace/axon_rust")
+    # Count slashes to determine format
+    slashes="${input//[^\/]/}"
+    if [[ ${#slashes} -ge 2 ]]; then
+        # jmagar/repo/skill format
+        repo=$(echo "$input" | cut -d/ -f1-2)
+        skill=$(echo "$input" | cut -d/ -f3-)
+        repo_name=$(basename "$repo")
+        dir="${overrides[$repo]:-$HOME/workspace/$repo_name}/skills/$skill"
+    elif [[ "$input" == */* ]]; then
+        # repo/skill shorthand (without owner)
+        repo="${input%%/*}"
+        skill="${input#*/}"
+        dir="${overrides[jmagar/$repo]:-$HOME/workspace/$repo}/skills/$skill"
+    else
+        # local skill
+        dir="skills/$input"
+    fi
+    if [[ ! -f "$dir/SKILL.md" ]]; then
+        echo "Error: no SKILL.md at $dir"
+        exit 1
+    fi
+    npx skills-ref validate "$dir"
+
+# ─── Testing ─────────────────────────────────────────────────────────
+
+_test_helpers := ""
+
+# Run unit tests for a plugin (or "all") — pytest, vitest, cargo test
+test-unit name="all":
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    pass=0; fail=0; skip=0
+
+    run_unit() {
+        local plugin="$1"
+        local dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        [[ ! -d "$dir" ]] && return
+
+        # Detect test runner
+        local runner=""
+        if [[ -f "$dir/pyproject.toml" ]] && [[ -d "$dir/tests" ]]; then
+            runner="pytest"
+        elif [[ -f "$dir/vitest.config.ts" ]]; then
+            runner="vitest"
+        elif [[ -f "$dir/Cargo.toml" ]] && [[ -d "$dir/tests" || -n "$(find "$dir/src" -name '*test*' 2>/dev/null | head -1)" ]]; then
+            runner="cargo"
+        fi
+
+        if [[ -z "$runner" ]]; then
+            skip=$((skip+1))
+            return
+        fi
+
+        echo "━━━ $plugin ($runner) ━━━"
+        local result=0
+        case "$runner" in
+            pytest)
+                (cd "$dir" && uv run pytest tests/ -x -q --tb=short 2>&1) || result=$?
+                ;;
+            vitest)
+                (cd "$dir" && npx vitest run --reporter=verbose 2>&1) || result=$?
+                ;;
+            cargo)
+                (cd "$dir" && cargo test 2>&1) || result=$?
+                ;;
+        esac
+
+        if [[ $result -eq 0 ]]; then
+            pass=$((pass+1))
+        else
+            fail=$((fail+1))
+        fi
+        echo ""
+    }
+
+    if [[ "{{name}}" != "all" ]]; then
+        run_unit "{{name}}"
+        exit $?
+    fi
+
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        run_unit "$plugin"
+    done
+
+    total=$((pass+fail+skip))
+    echo "──────────────────────────────────────────"
+    echo "Unit tests: $pass passed, $fail failed, $skip skipped ($total plugins)"
+    [[ $fail -gt 0 ]] && exit 1
+
+# Run smoke/live integration tests for a plugin (or "all")
+test-live name="all":
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+
+    find_test_script() {
+        local dir="$1"
+        for f in "$dir/scripts/smoke-test.sh" "$dir/tests/test_live.sh" "$dir/tests/test-mcporter.sh"; do
+            if [[ -x "$f" ]]; then
+                echo "$f"
+                return
+            fi
+        done
+    }
+
+    run_test() {
+        local plugin="$1"
+        local dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        if [[ ! -d "$dir" ]]; then
+            echo "⚠ $plugin: workspace dir not found ($dir)"
+            return 1
+        fi
+        local script
+        script=$(find_test_script "$dir")
+        if [[ -z "$script" ]]; then
+            echo "⚠ $plugin: no test script found"
+            return 1
+        fi
+        echo "━━━ $plugin ($script) ━━━"
+        (cd "$dir" && bash "$script") || return 1
+        echo ""
+    }
+
+    if [[ "{{name}}" != "all" ]]; then
+        run_test "{{name}}"
+        exit $?
+    fi
+
+    pass=0; fail=0; skip=0
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        script=$(find_test_script "$dir" 2>/dev/null)
+        if [[ -z "$script" ]]; then
+            skip=$((skip+1))
+            continue
+        fi
+        echo "━━━ $plugin ━━━"
+        if (cd "$dir" && bash "$script"); then
+            pass=$((pass+1))
+        else
+            fail=$((fail+1))
+        fi
+        echo ""
+    done
+
+    total=$((pass+fail+skip))
+    echo "──────────────────────────────────────────"
+    echo "Live tests: $pass passed, $fail failed, $skip skipped ($total plugins)"
+    [[ $fail -gt 0 ]] && exit 1
+
+# Run all tests (unit + live) for a plugin or all
+test name="all":
+    #!/usr/bin/env bash
+    set -uo pipefail
+    echo "══════════════════════════════════════════"
+    echo "  Unit Tests"
+    echo "══════════════════════════════════════════"
+    just test-unit "{{name}}" || true
+    echo ""
+    echo "══════════════════════════════════════════"
+    echo "  Live / Smoke Tests"
+    echo "══════════════════════════════════════════"
+    just test-live "{{name}}"
 
 # ─── MCP Security Audit ──────────────────────────────────────────────
 
@@ -927,14 +1128,13 @@ mcp-logs-all lines="20":
         echo ""
     done
 
-# ─── CLAUDE.md Symlinks ──────────────────────────────────────────────
+# ─── Symlinks ────────────────────────────────────────────────────────
 
 # Ensure AGENTS.md and GEMINI.md symlink to CLAUDE.md everywhere
 link-claude-md:
     #!/usr/bin/env bash
     set -euo pipefail
     count=0
-    # Find every directory containing a regular-file CLAUDE.md
     while IFS= read -r claude_file; do
         dir=$(dirname "$claude_file")
         for target in AGENTS.md GEMINI.md; do
@@ -942,7 +1142,6 @@ link-claude-md:
             if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "CLAUDE.md" ]]; then
                 echo "OK   $link → CLAUDE.md"
             else
-                # Remove stale file/symlink if present
                 rm -f "$link"
                 ln -s CLAUDE.md "$link"
                 echo "LINK $link → CLAUDE.md"
@@ -956,3 +1155,716 @@ link-claude-md:
     else
         echo "Created $count new symlink(s)."
     fi
+
+# Setup all bash-path symlinks (skills, agents, commands → ~/.claude/) and ~/.claude-homelab/
+symlinks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    REPO_ROOT="$(pwd)"
+    CLAUDE_DIR="$HOME/.claude"
+    HOMELAB_DIR="$HOME/.claude-homelab"
+    created=0; skipped=0; errors=0
+
+    link() {
+        local src="$1" tgt="$2"
+        if [[ ! -e "$src" ]]; then
+            echo "  ✗ source missing: $src"
+            errors=$((errors+1))
+            return
+        fi
+        mkdir -p "$(dirname "$tgt")"
+        if [[ -L "$tgt" ]] && [[ "$(readlink -f "$tgt")" == "$(readlink -f "$src")" ]]; then
+            echo "  OK $tgt"
+            skipped=$((skipped+1))
+        elif [[ -e "$tgt" ]]; then
+            echo "  ⚠  exists (not overwriting): $tgt"
+            skipped=$((skipped+1))
+        else
+            ln -sf "$src" "$tgt"
+            echo "  ✓  $tgt → $src"
+            created=$((created+1))
+        fi
+    }
+
+    echo "── Skills → ~/.claude/skills/"
+    mkdir -p "$CLAUDE_DIR/skills"
+    while IFS= read -r skill_dir; do
+        name=$(basename "$skill_dir")
+        [[ "$name" == .* ]] && continue
+        link "$skill_dir" "$CLAUDE_DIR/skills/$name"
+    done < <(find "$REPO_ROOT/skills" -mindepth 1 -maxdepth 1 -type d | sort)
+
+    echo ""
+    echo "── Agents → ~/.claude/agents/"
+    mkdir -p "$CLAUDE_DIR/agents"
+    while IFS= read -r agent; do
+        name=$(basename "$agent")
+        link "$agent" "$CLAUDE_DIR/agents/$name"
+    done < <(find "$REPO_ROOT/agents" -maxdepth 1 -type f -name "*.md" 2>/dev/null | sort)
+
+    echo ""
+    echo "── Commands → ~/.claude/commands/"
+    mkdir -p "$CLAUDE_DIR/commands"
+    # Single .md files
+    while IFS= read -r cmd; do
+        name=$(basename "$cmd")
+        link "$cmd" "$CLAUDE_DIR/commands/$name"
+    done < <(find "$REPO_ROOT/commands" -maxdepth 1 -type f -name "*.md" 2>/dev/null | sort)
+    # Namespaced directories
+    while IFS= read -r cmd_dir; do
+        name=$(basename "$cmd_dir")
+        link "$cmd_dir" "$CLAUDE_DIR/commands/$name"
+    done < <(find "$REPO_ROOT/commands" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+
+    echo ""
+    echo "── ~/.claude-homelab/"
+    mkdir -p "$HOMELAB_DIR"
+    cp "$REPO_ROOT/scripts/load-env.sh" "$HOMELAB_DIR/load-env.sh"
+    echo "  ✓  installed load-env.sh"
+    if [[ ! -f "$HOMELAB_DIR/.env" ]]; then
+        cp "$REPO_ROOT/.env.example" "$HOMELAB_DIR/.env"
+        chmod 600 "$HOMELAB_DIR/.env"
+        echo "  ✓  created .env from .env.example"
+        echo ""
+        echo "  ⚠  Next: edit ~/.claude-homelab/.env with your credentials"
+    else
+        echo "  OK .env already exists"
+    fi
+
+    echo ""
+    echo "── CLAUDE.md symlinks"
+    just link-claude-md
+
+    echo "──────────────────────────────────────────"
+    echo "Created: $created, Skipped: $skipped, Errors: $errors"
+    [[ $errors -gt 0 ]] && exit 1
+    exit 0
+
+# ─── Dev Workflow ────────────────────────────────────────────────────
+
+# Build and start a plugin in one shot
+deploy name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "── build: {{name}}"
+    just build "{{name}}"
+    echo ""
+    echo "── up: {{name}}"
+    just up "{{name}}"
+
+# Git pull + rebuild + restart across all (or one) external plugin repos
+update name="all":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+
+    do_update() {
+        local plugin="$1"
+        local dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        if [[ ! -d "$dir" ]]; then
+            echo "  ⚠ $plugin: workspace dir not found"
+            return
+        fi
+        echo "━━━ $plugin ($dir) ━━━"
+        # Git pull
+        if [[ -d "$dir/.git" ]]; then
+            echo "  git pull..."
+            (cd "$dir" && git pull --rebase 2>&1 | sed 's/^/  /')
+        fi
+        # Rebuild + restart if compose exists
+        local compose
+        compose=$(ls "$dir"/docker-compose.y*ml 2>/dev/null | head -1)
+        if [[ -n "$compose" ]]; then
+            echo "  docker compose build..."
+            docker compose -f "$compose" build 2>&1 | tail -3 | sed 's/^/  /'
+            echo "  docker compose up -d..."
+            docker compose -f "$compose" up -d 2>&1 | sed 's/^/  /'
+        fi
+        echo ""
+    }
+
+    if [[ "{{name}}" != "all" ]]; then
+        do_update "{{name}}"
+    else
+        plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+        for plugin in $plugins; do
+            do_update "$plugin"
+        done
+    fi
+
+# Show git status across all workspace repos
+git-status:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+
+    printf "%-24s %-12s %-12s %s\n" "REPO" "BRANCH" "STATUS" "DETAILS"
+    printf "%-24s %-12s %-12s %s\n" "────────────────────────" "────────────" "────────────" "──────────────────────"
+
+    check_repo() {
+        local name="$1" dir="$2"
+        if [[ ! -d "$dir/.git" ]]; then
+            printf "%-24s %-12s %-12s %s\n" "$name" "-" "not a repo" "$dir"
+            return
+        fi
+        local branch status_line ahead behind dirty
+        branch=$(cd "$dir" && git branch --show-current 2>/dev/null || echo "detached")
+        dirty=$(cd "$dir" && git status --porcelain 2>/dev/null | wc -l)
+        # Fetch silently to check ahead/behind
+        ahead=$(cd "$dir" && git rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo "?")
+        behind=$(cd "$dir" && git rev-list --count 'HEAD..@{upstream}' 2>/dev/null || echo "?")
+
+        if [[ "$dirty" -eq 0 && "$ahead" == "0" && "$behind" == "0" ]]; then
+            status_line="clean"
+        elif [[ "$dirty" -gt 0 ]]; then
+            status_line="dirty"
+        else
+            status_line="synced"
+        fi
+
+        local details=""
+        [[ "$dirty" -gt 0 ]] && details+="${dirty} changed "
+        [[ "$ahead" != "0" && "$ahead" != "?" ]] && details+="↑${ahead} "
+        [[ "$behind" != "0" && "$behind" != "?" ]] && details+="↓${behind} "
+
+        printf "%-24s %-12s %-12s %s\n" "$name" "$branch" "$status_line" "$details"
+    }
+
+    # This repo
+    check_repo "claude-homelab" "$(pwd)"
+
+    # External repos
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        check_repo "$plugin" "$dir"
+    done
+
+# ─── Operations ──────────────────────────────────────────────────────
+
+# Quick connectivity check for all configured services
+health:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    env_file="$HOME/.claude-homelab/.env"
+    if [[ ! -f "$env_file" ]]; then
+        echo "Error: $env_file not found"
+        exit 1
+    fi
+    # Load env
+    declare -A ENV=()
+    while IFS='=' read -r key val; do
+        [[ -z "$key" || "$key" =~ ^# ]] && continue
+        key=$(echo "$key" | xargs)
+        val=$(echo "$val" | xargs | sed 's/^["'\''"]//;s/["'\''"]$//')
+        ENV["$key"]="$val"
+    done < "$env_file"
+
+    # Service → URL var mapping
+    declare -A SERVICES=(
+        ["Plex"]="PLEX_URL"
+        ["Radarr"]="RADARR_URL"
+        ["Sonarr"]="SONARR_URL"
+        ["Prowlarr"]="PROWLARR_URL"
+        ["Tautulli"]="TAUTULLI_URL"
+        ["qBittorrent"]="QBITTORRENT_URL"
+        ["SABnzbd"]="SABNZBD_URL"
+        ["Overseerr"]="OVERSEERR_URL"
+        ["Gotify"]="GOTIFY_URL"
+        ["Linkding"]="LINKDING_URL"
+        ["Memos"]="MEMOS_URL"
+        ["Bytestash"]="BYTESTASH_URL"
+        ["Paperless"]="PAPERLESS_URL"
+        ["Radicale"]="RADICALE_URL"
+        ["UniFi"]="UNIFI_URL"
+        ["Unraid"]="UNRAID_SERVER1_URL"
+    )
+    # MCP endpoints from settings.json
+    settings="$HOME/.claude/settings.json"
+
+    printf "%-16s %-6s %s\n" "SERVICE" "CODE" "URL"
+    printf "%-16s %-6s %s\n" "────────────────" "──────" "──────────────────────────────"
+
+    for name in $(echo "${!SERVICES[@]}" | tr ' ' '\n' | sort); do
+        var="${SERVICES[$name]}"
+        url="${ENV[$var]:-}"
+        if [[ -z "$url" || "$url" =~ ^your ]]; then
+            printf "%-16s %-6s %s\n" "$name" "—" "(not configured)"
+            continue
+        fi
+        code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 "$url" 2>/dev/null || echo "000")
+        printf "%-16s %-6s %s\n" "$name" "$code" "$url"
+    done
+
+    # MCP endpoints
+    if [[ -f "$settings" ]]; then
+        echo ""
+        printf "%-16s %-6s %s\n" "MCP SERVER" "CODE" "URL"
+        printf "%-16s %-6s %s\n" "────────────────" "──────" "──────────────────────────────"
+        jq -r '.env // {} | to_entries[] | select(.key | endswith("_MCP_URL")) | [.key, .value] | @tsv' "$settings" | while IFS=$'\t' read -r var url; do
+            name=$(echo "$var" | sed 's/_MCP_URL$//' | tr '[:upper:]' '[:lower:]')
+            code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 "$url" 2>/dev/null || echo "000")
+            printf "%-16s %-6s %s\n" "$name" "$code" "$url"
+        done
+    fi
+
+# TLS certificate expiry dashboard
+certs:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    settings="$HOME/.claude/settings.json"
+    env_file="$HOME/.claude-homelab/.env"
+    declare -A checked=()
+
+    printf "%-30s %-8s %-12s %s\n" "HOST" "DAYS" "STATUS" "EXPIRES"
+    printf "%-30s %-8s %-12s %s\n" "──────────────────────────────" "────────" "────────────" "──────────────────────"
+
+    check_cert() {
+        local url="$1" label="$2"
+        [[ ! "$url" =~ ^https:// ]] && return
+        local host
+        host=$(echo "$url" | sed 's|https://||;s|/.*||;s|:.*||')
+        [[ -n "${checked[$host]:-}" ]] && return
+        checked["$host"]=1
+        local port
+        port=$(echo "$url" | sed 's|https://||;s|/.*||' | grep -oP ':\K[0-9]+' || echo "443")
+        local expiry
+        expiry=$(echo | openssl s_client -servername "$host" -connect "$host:$port" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | sed 's/notAfter=//')
+        if [[ -z "$expiry" ]]; then
+            printf "%-30s %-8s %-12s %s\n" "$label ($host)" "?" "unreachable" ""
+            return
+        fi
+        local expiry_epoch now_epoch days
+        expiry_epoch=$(date -d "$expiry" +%s 2>/dev/null || echo 0)
+        now_epoch=$(date +%s)
+        days=$(( (expiry_epoch - now_epoch) / 86400 ))
+        local status
+        if [[ $days -lt 7 ]]; then
+            status="CRITICAL"
+        elif [[ $days -lt 30 ]]; then
+            status="WARNING"
+        else
+            status="OK"
+        fi
+        printf "%-30s %-8s %-12s %s\n" "$label ($host)" "$days" "$status" "$expiry"
+    }
+
+    # MCP endpoints from settings.json
+    if [[ -f "$settings" ]]; then
+        jq -r '.env // {} | to_entries[] | select(.key | endswith("_MCP_URL")) | [.key, .value] | @tsv' "$settings" | while IFS=$'\t' read -r var url; do
+            name=$(echo "$var" | sed 's/_MCP_URL$//' | tr '[:upper:]' '[:lower:]')
+            check_cert "$url" "$name"
+        done
+    fi
+
+    # Service URLs from .env
+    if [[ -f "$env_file" ]]; then
+        grep -E '_URL=' "$env_file" | grep -v '^#' | while IFS='=' read -r key val; do
+            val=$(echo "$val" | xargs | sed 's/^["'\''"]//;s/["'\''"]$//')
+            [[ -z "$val" || "$val" =~ ^your || ! "$val" =~ ^https ]] && continue
+            name=$(echo "$key" | sed 's/_URL$//' | tr '[:upper:]' '[:lower:]')
+            check_cert "$val" "$name"
+        done
+    fi
+
+# Check for outdated dependencies across external repos
+outdated:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        script="$dir/scripts/check-outdated-deps.sh"
+        if [[ -x "$script" ]]; then
+            echo "━━━ $plugin ━━━"
+            (cd "$dir" && bash "$script" 2>&1) || true
+            echo ""
+        fi
+    done
+
+# ─── Hygiene ─────────────────────────────────────────────────────────
+
+# Lint everything: external repos, local Python, local shell scripts
+lint:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    pass=0; fail=0; skip=0
+
+    section() { echo ""; echo "═══ $1 ═══"; }
+    ok()   { pass=$((pass+1)); }
+    bad()  { fail=$((fail+1)); }
+
+    # ── 1. External repo lint-plugin.sh ──
+    section "External Plugins (lint-plugin.sh)"
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        script="$dir/scripts/lint-plugin.sh"
+        if [[ ! -x "$script" ]]; then
+            skip=$((skip+1))
+            continue
+        fi
+        echo "━━━ $plugin ━━━"
+        if (cd "$dir" && bash "$script" 2>&1); then
+            ok
+        else
+            bad
+        fi
+        echo ""
+    done
+
+    # ── 2. Local Python scripts (ruff + ty) ──
+    py_files=$(find skills -name "*.py" -not -path "*__pycache__*" -not -path "*.venv*" 2>/dev/null)
+    if [[ -n "$py_files" ]]; then
+        section "Python (ruff lint + format check + ty type check)"
+
+        echo "━━━ ruff check ━━━"
+        if ruff check $py_files 2>&1; then
+            echo "  ✓ ruff lint passed"
+            ok
+        else
+            echo "  ✗ ruff lint failed"
+            bad
+        fi
+
+        echo ""
+        echo "━━━ ruff format --check ━━━"
+        if ruff format --check $py_files 2>&1; then
+            echo "  ✓ ruff format passed"
+            ok
+        else
+            echo "  ✗ ruff format failed (run: ruff format skills/)"
+            bad
+        fi
+
+        echo ""
+        echo "━━━ ty ━━━"
+        if ty check $py_files 2>&1; then
+            echo "  ✓ ty type check passed"
+            ok
+        else
+            echo "  ✗ ty type check failed"
+            bad
+        fi
+    fi
+
+    # ── 3. Local shell scripts (shellcheck) ──
+    sh_files=$(find scripts skills -name "*.sh" -not -path "*.venv*" 2>/dev/null)
+    if [[ -n "$sh_files" ]]; then
+        section "Shell (shellcheck)"
+        sh_pass=0; sh_fail=0
+        for f in $sh_files; do
+            if shellcheck -S warning "$f" 2>&1 >/dev/null; then
+                sh_pass=$((sh_pass+1))
+            else
+                echo "  ✗ $f"
+                shellcheck -S warning "$f" 2>&1 | head -5 | sed 's/^/    /'
+                sh_fail=$((sh_fail+1))
+            fi
+        done
+        echo "  shellcheck: $sh_pass passed, $sh_fail failed"
+        if [[ $sh_fail -eq 0 ]]; then ok; else bad; fi
+    fi
+
+    # ── 4. Skill validation ──
+    section "Skills (skills-ref validate)"
+    skill_pass=0; skill_fail=0
+    while IFS= read -r skill_dir; do
+        [[ ! -f "$skill_dir/SKILL.md" ]] && continue
+        name=$(basename "$skill_dir")
+        if npx skills-ref validate "$skill_dir" &>/dev/null; then
+            skill_pass=$((skill_pass+1))
+        else
+            echo "  ✗ $name"
+            npx skills-ref validate "$skill_dir" 2>&1 | tail -2 | sed 's/^/    /'
+            skill_fail=$((skill_fail+1))
+        fi
+    done < <(find skills -mindepth 1 -maxdepth 1 -type d | sort)
+    echo "  skills-ref: $skill_pass passed, $skill_fail failed"
+    if [[ $skill_fail -eq 0 ]]; then ok; else bad; fi
+
+    # ── 5. PR review comments (unresolved) ──
+    section "PR Review Comments (unresolved threads)"
+    fetch_script="$(pwd)/skills/gh-address-comments/scripts/fetch_comments.py"
+    if [[ ! -f "$fetch_script" ]]; then
+        echo "  ⚠ fetch_comments.py not found"
+    else
+        pr_issues=0; pr_clean=0
+        all_repos=("$(pwd)")
+        while IFS= read -r plugin; do
+            all_repos+=("${overrides[$plugin]:-$HOME/workspace/$plugin}")
+        done < <(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+        for dir in "${all_repos[@]}"; do
+            [[ ! -d "$dir/.git" ]] && continue
+            repo_name=$(basename "$dir")
+            # Get latest open PR number
+            pr_num=$(cd "$dir" && gh pr list --limit 1 --state open --json number --jq '.[0].number' 2>/dev/null)
+            if [[ -z "$pr_num" ]]; then
+                continue
+            fi
+            # Fetch comments and count unresolved threads
+            comments=$(cd "$dir" && python3 "$fetch_script" 2>/dev/null)
+            if [[ -z "$comments" ]]; then
+                continue
+            fi
+            unresolved=$(echo "$comments" | python3 -c "import sys,json; d=json.load(sys.stdin); print(sum(1 for t in d.get('review_threads',[]) if not t.get('isResolved',False)))" 2>/dev/null || echo 0)
+            [[ -z "$unresolved" ]] && unresolved=0
+            if [[ "$unresolved" -gt 0 ]]; then
+                echo "  ✗ $repo_name PR #$pr_num: $unresolved unresolved thread(s)"
+                pr_issues=$((pr_issues+1))
+            else
+                echo "  ✓ $repo_name PR #$pr_num: all threads resolved"
+                pr_clean=$((pr_clean+1))
+            fi
+        done
+        total_pr=$((pr_issues+pr_clean))
+        if [[ $total_pr -eq 0 ]]; then
+            echo "  (no open PRs found)"
+        elif [[ $pr_issues -eq 0 ]]; then
+            ok
+        else
+            bad
+        fi
+    fi
+
+    # ── 6. Monolith detector ──
+    section "Monolith Detector (files > 500 LOC)"
+    monoliths=0
+    # Check this repo
+    while IFS= read -r f; do
+        loc=$(wc -l < "$f")
+        if [[ $loc -gt 500 ]]; then
+            echo "  ⚠ $f: $loc lines"
+            monoliths=$((monoliths+1))
+        fi
+    done < <(find . -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.sh" -o -name "*.rs" -o -name "*.go" -o -name "*.mjs" \) -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" -not -path "*/.cache/*" -not -path "*/dist/*" -not -path "*/build/*" -not -path "*/.next/*" 2>/dev/null)
+    # Check external repos
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        [[ ! -d "$dir" ]] && continue
+        while IFS= read -r f; do
+            loc=$(wc -l < "$f")
+            if [[ $loc -gt 500 ]]; then
+                echo "  ⚠ $f: $loc lines"
+                monoliths=$((monoliths+1))
+            fi
+        done < <(find "$dir" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.sh" -o -name "*.rs" -o -name "*.go" -o -name "*.mjs" \) -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" -not -path "*/.cache/*" -not -path "*/dist/*" -not -path "*/build/*" -not -path "*/target/*" -not -path "*/.next/*" 2>/dev/null)
+    done
+    if [[ $monoliths -eq 0 ]]; then
+        echo "  ✓ No monoliths found"
+        ok
+    else
+        echo "  $monoliths file(s) over 500 LOC"
+        skip
+    fi
+
+    # ── Summary ──
+    echo ""
+    echo "──────────────────────────────────────────"
+    total=$((pass+fail+skip))
+    echo "Lint: $pass passed, $fail failed, $skip skipped ($total checks)"
+    [[ $fail -gt 0 ]] && exit 1
+
+# Find code files over a line threshold across all repos
+monoliths threshold="500":
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    threshold="{{threshold}}"
+    count=0
+
+    printf "%-8s %s\n" "LINES" "FILE"
+    printf "%-8s %s\n" "────────" "──────────────────────────────────────────"
+
+    scan_dir() {
+        local dir="$1"
+        find "$dir" -type f \( -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.sh" -o -name "*.rs" -o -name "*.go" -o -name "*.mjs" -o -name "*.tsx" -o -name "*.jsx" \) \
+            -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" \
+            -not -path "*/.cache/*" -not -path "*/dist/*" -not -path "*/build/*" \
+            -not -path "*/target/*" -not -path "*/.beads/*" -not -path "*/.next/*" 2>/dev/null | while read -r f; do
+            loc=$(wc -l < "$f")
+            if [[ $loc -gt $threshold ]]; then
+                printf "%-8s %s\n" "$loc" "$f"
+            fi
+        done
+    }
+
+    # This repo
+    scan_dir "."
+
+    # External repos
+    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+    for plugin in $plugins; do
+        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
+        [[ -d "$dir" ]] && scan_dir "$dir"
+    done | sort -rn
+
+# Compare .env.example with actual .env to find new or missing variables
+env-diff:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    example=".env.example"
+    actual="$HOME/.claude-homelab/.env"
+    if [[ ! -f "$example" ]]; then
+        echo "Error: $example not found"
+        exit 1
+    fi
+    if [[ ! -f "$actual" ]]; then
+        echo "Error: $actual not found — run: just symlinks"
+        exit 1
+    fi
+    # Extract keys (strip comments, empty lines, values)
+    example_keys=$(grep -oP '^[A-Z][A-Z0-9_]+(?==)' "$example" | sort -u)
+    actual_keys=$(grep -oP '^[A-Z][A-Z0-9_]+(?==)' "$actual" | sort -u)
+
+    missing=$(comm -23 <(echo "$example_keys") <(echo "$actual_keys"))
+    extra=$(comm -13 <(echo "$example_keys") <(echo "$actual_keys"))
+
+    if [[ -n "$missing" ]]; then
+        echo "Missing from .env (defined in .env.example):"
+        echo "$missing" | sed 's/^/  - /'
+        echo ""
+    fi
+    if [[ -n "$extra" ]]; then
+        echo "Extra in .env (not in .env.example):"
+        echo "$extra" | sed 's/^/  + /'
+        echo ""
+    fi
+    if [[ -z "$missing" && -z "$extra" ]]; then
+        echo "✓ .env and .env.example are in sync"
+    fi
+
+# ─── Observability ───────────────────────────────────────────────────
+
+# One-screen dashboard: compose + health + versions + MCP
+status:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    echo "══════════════════════════════════════════"
+    echo "  Claude Homelab Status"
+    echo "══════════════════════════════════════════"
+    echo ""
+
+    # Versions
+    echo "── Versions ──"
+    version_files="package.json Cargo.toml pyproject.toml .claude-plugin/plugin.json .codex-plugin/plugin.json gemini-extension.json README.md CLAUDE.md"
+    versions=()
+    for f in $version_files; do
+        [[ ! -f "$f" ]] && continue
+        case "$f" in
+            *.json) v=$(grep -m1 '"version"' "$f" | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/') ;;
+            *.toml) v=$(grep -m1 '^version' "$f" | sed 's/.*=[[:space:]]*"\([^"]*\)".*/\1/') ;;
+            README.md) v=$(grep -m1 '^Version:' "$f" | sed 's/Version:[[:space:]]*//') ;;
+            CLAUDE.md) v=$(grep -m1 '^\*\*Version:\*\*' "$f" | sed 's/\*\*Version:\*\*[[:space:]]*//') ;;
+        esac
+        [[ -n "${v:-}" ]] && versions+=("$v")
+    done
+    if [[ ${#versions[@]} -gt 0 ]]; then
+        first="${versions[0]}"; drift=false
+        for v in "${versions[@]}"; do [[ "$v" != "$first" ]] && drift=true && break; done
+        if $drift; then echo "  ✗ Version drift detected"; else echo "  ✓ All versions: $first"; fi
+    fi
+    echo ""
+
+    # Compose status
+    echo "── Docker Compose ──"
+    just compose-status 2>&1
+    echo ""
+
+    # Health
+    echo "── Service Health ──"
+    just health 2>&1
+    echo ""
+
+    # MCP servers
+    echo "── MCP Servers ──"
+    just mcp-servers 2>&1
+
+# ─── Ports & Resources ──────────────────────────────────────────────
+
+# List all host:port bindings for running MCP containers
+ports:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    mapfile -t plugins < <(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+
+    fmt='{{"{{"}}.Names}}\t{{"{{"}}.Ports}}'
+    all=$(docker ps --format "$fmt" 2>/dev/null || true)
+
+    printf "%-24s %s\n" "PLUGIN" "PORTS"
+    printf "%-24s %s\n" "────────────────────────" "──────────────────────────────────────────"
+    for p in "${plugins[@]}"; do
+        match=$(echo "$all" | grep -P "^${p}\t" || true)
+        [[ -z "$match" ]] && continue
+        ports=$(echo "$match" | cut -f2)
+        printf "%-24s %s\n" "$p" "$ports"
+    done
+
+    # Also check for locally-bound MCP ports from .env
+    echo ""
+    echo "Configured MCP ports (from .env):"
+    env_file="$HOME/.claude-homelab/.env"
+    if [[ -f "$env_file" ]]; then
+        grep -E '_MCP_PORT=' "$env_file" | grep -v '^#' | while IFS='=' read -r key val; do
+            val=$(echo "$val" | xargs | sed 's/^["'\''"]//;s/["'\''"]$//')
+            [[ -z "$val" ]] && continue
+            name=$(echo "$key" | sed 's/_MCP_PORT$//' | tr '[:upper:]' '[:lower:]')
+            # Check if port is in use
+            if ss -tlnp 2>/dev/null | grep -q ":${val} "; then
+                printf "  %-24s :%s (in use)\n" "$name" "$val"
+            else
+                printf "  %-24s :%s (free)\n" "$name" "$val"
+            fi
+        done
+    fi
+
+# Show resource usage for our marketplace MCP containers
+resources:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    manifest=".claude-plugin/marketplace.json"
+    mapfile -t plugins < <(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
+
+    # Collect running container names that match our plugins
+    running=()
+    for p in "${plugins[@]}"; do
+        if docker ps -q -f "name=^${p}$" 2>/dev/null | grep -q .; then
+            running+=("$p")
+        fi
+    done
+
+    if [[ ${#running[@]} -eq 0 ]]; then
+        echo "No marketplace MCP containers running."
+        exit 0
+    fi
+
+    echo "══════════════════════════════════════════"
+    echo "  MCP Server Resource Usage"
+    echo "══════════════════════════════════════════"
+    echo ""
+
+    # Docker stats (one-shot, no stream)
+    docker stats --no-stream --format "table {{"{{"}}.Name}}\t{{"{{"}}.CPUPerc}}\t{{"{{"}}.MemUsage}}\t{{"{{"}}.MemPerc}}\t{{"{{"}}.NetIO}}\t{{"{{"}}.PIDs}}" "${running[@]}" 2>/dev/null
+
+    echo ""
+
+    # Also show local process resource usage for our plugins
+    echo "Local Processes:"
+    printf "  %-24s %-8s %-12s %s\n" "PLUGIN" "PID" "RSS (MB)" "CPU%"
+    printf "  %-24s %-8s %-12s %s\n" "────────────────────────" "────────" "────────────" "────────"
+    for p in "${plugins[@]}"; do
+        p_under="${p//-/_}"
+        # Find matching processes, skip docker/grep/just
+        ps aux 2>/dev/null | grep -E "(${p}|${p_under})" | grep -v -E 'grep|just |docker|emulator|qemu' | head -1 | while read -r user pid cpu mem vsz rss tty stat start time cmd; do
+            rss_mb=$(echo "scale=1; $rss/1024" | bc 2>/dev/null || echo "?")
+            printf "  %-24s %-8s %-12s %s\n" "$p" "$pid" "$rss_mb" "$cpu%"
+        done
+    done
