@@ -21,12 +21,7 @@ Work through these steps in order:
 
 ### 2. Bump version (before staging)
 
-Detect the project type and bump the version based on the commit message you'll generate:
-
-**Detection order** (use the first match):
-1. `Cargo.toml` → Rust project → bump `version = "X.Y.Z"` in `[package]`
-2. `package.json` → Node project → bump `"version": "X.Y.Z"`
-3. `pyproject.toml` → Python project → bump `version = "X.Y.Z"` in `[project]`
+Detect the project type and bump the version based on the commit message you'll generate.
 
 **Bump rules** (based on the commit message prefix you'll draft in step 3):
 - `feat!:` or `BREAKING CHANGE` → **major** (X+1.0.0)
@@ -34,13 +29,19 @@ Detect the project type and bump the version based on the commit message you'll 
 - Everything else (`fix`, `chore`, `refactor`, `test`, `docs`, etc.) → **patch** (X.Y.Z+1)
 
 **Process:**
-1. Read the current version from the manifest
+1. Read the current version from the primary manifest (first match: `Cargo.toml`, `package.json`, `pyproject.toml`)
 2. Draft the commit message mentally (you'll finalize it in step 4)
 3. Determine bump type from the commit prefix
 4. Calculate the new version
-5. Edit the manifest file with the new version
+5. **Update the version in ALL of these files that exist in the repo:**
+   - `Cargo.toml` — `version = "X.Y.Z"` in `[package]`
+   - `package.json` — `"version": "X.Y.Z"`
+   - `pyproject.toml` — `version = "X.Y.Z"` in `[project]`
+   - `.claude-plugin/plugin.json` — `"version": "X.Y.Z"`
+   - `.codex-plugin/plugin.json` — `"version": "X.Y.Z"`
+   - `gemini-extension.json` — `"version": "X.Y.Z"`
 6. If Rust: run `cargo check` to update `Cargo.lock` (it records the version)
-7. Report: `Version: X.Y.Z → A.B.C (bump type)`
+7. Report: `Version: X.Y.Z → A.B.C (bump type)` and list which files were updated
 
 **Skip conditions:**
 - Version is `0.0.0` or `0.0.1` (project not yet versioned)

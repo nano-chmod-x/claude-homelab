@@ -2,49 +2,10 @@
 
 Comprehensive Claude Code skills, agents, and commands for homelab service management.
 
-## Table of Contents
-
-- [Glossary](#glossary)
-- [Repository Overview](#repository-overview)
-- [Repository Structure](#repository-structure)
-- [Source of Truth](#source-of-truth)
-  - [Symlink Architecture](#symlink-architecture)
-  - [How Slash Commands Work](#how-slash-commands-work)
-  - [Command File Format](#command-file-format)
-  - [Adding New Symlinks](#adding-new-symlinks)
-  - [Automated Symlink Setup](#automated-symlink-setup)
-- [Core Principles](#core-principles)
-  - [1. Credential Management](#1-credential-management)
-  - [2. Shared Library](#2-shared-library-libload-envsh)
-  - [3. Directory Organization](#3-directory-organization)
-  - [4. Git Workflow](#4-git-workflow)
-  - [5. Code Standards](#5-code-standards)
-  - [6. Documentation Standards](#6-documentation-standards)
-- [Development Workflows](#development-workflows)
-  - [Adding a New Skill](#adding-a-new-skill)
-  - [Adding a New Agent](#adding-a-new-agent)
-  - [Adding a New Command](#adding-a-new-command)
-- [Common Patterns](#common-patterns)
-  - [Error Handling](#error-handling)
-  - [JSON Output](#json-output)
-  - [Logging](#logging)
-  - [Security Patterns](#security-patterns)
-- [Testing](#testing)
-  - [Manual Testing](#manual-testing)
-  - [Integration Testing](#integration-testing)
-- [Troubleshooting](#troubleshooting)
-  - [Common Issues](#common-issues)
-  - [Debug Mode](#debug-mode)
-- [Security Best Practices](#security-best-practices)
-- [Version Control](#version-control)
-  - [Semantic Versioning](#semantic-versioning)
-  - [Version Bump Examples](#version-bump-examples)
-- [Links and Resources](#links-and-resources)
-
 ## Glossary
 
 - **Skill**: A Claude Code plugin providing commands and scripts for a specific service (e.g., Plex, Radarr)
-- **Agent**: A specialized AI agent for complex workflows (e.g., `agentic-orchestrator`, `firecrawl-specialist`)
+- **Agent**: A specialized AI agent for complex workflows (e.g., `notebooklm-specialist`)
 - **Command**: A slash command invocable in Claude Code (e.g., `/firecrawl:scrape`, `/homelab:docker-health`)
 - **Script**: Executable code in skill `scripts/` directories that performs API calls or system operations
 - **Reference**: Detailed documentation in skill `references/` directories (API endpoints, troubleshooting, etc.)
@@ -60,8 +21,8 @@ This repository provides production-ready integrations for self-hosted homelab s
 - **Plugin path** (`/plugin marketplace add jmagar/claude-homelab`) — Claude Code native plugin system
 - **Bash path** (`curl -sSL .../install.sh | bash`) — symlinks into `~/.claude/`
 
-- **homelab-core plugin** — agents, commands, setup wizard, health dashboard (repo root IS the plugin)
-- **Service skills** (`skills/`) — 22 service integrations; each skill directory is independently usable
+- **homelab-core plugin** — agents, commands, prompts, setup wizard, health dashboard (repo root IS the plugin)
+- **Service skills** (`skills/`) — 16 service integrations + 2 homelab-core skills (18 total); each skill directory is independently usable
 - **Shared library** (`scripts/load-env.sh`) — credential loading, installed to `~/.claude-homelab/`
 
 ## Repository Structure
@@ -72,31 +33,43 @@ claude-homelab/
 ├── CLAUDE.md                        # This file - development guidelines
 ├── .env.example                     # Credential template (tracked, no secrets)
 ├── .claude-plugin/
-│   ├── marketplace.json             # Plugin catalog (23 plugins)
+│   ├── marketplace.json             # Plugin catalog (27 plugins)
 │   └── plugin.json                  # homelab-core manifest (root IS the plugin)
 │
-├── agents/                          # homelab-core agents (4 specialist agents)
-│   ├── agentic-orchestrator.md
-│   ├── exa-specialist.md
-│   ├── firecrawl-specialist.md
+├── agents/                          # homelab-core agents
 │   └── notebooklm-specialist.md
 │
-├── commands/                        # homelab-core slash commands
+├── commands/                        # homelab-core slash commands (.md definitions)
 │   ├── check.md                     # /check
+│   ├── deploy.md                    # /deploy
 │   ├── quick-push.md                # /quick-push
 │   ├── save-to-md.md                # /save-to-md
-│   ├── setup-homelab.md             # /setup-homelab
 │   ├── validate-plan.md             # /validate-plan
 │   ├── homelab/                     # /homelab:system-resources, docker-health, disk-space, zfs-health
 │   └── notebooklm/                  # /notebooklm:create, ask, source, generate, download, list, research
 │
-├── skills/                          # All service skills (22 services + homelab-core)
+├── prompts/                         # Command prompt definitions (.toml sidecars)
+│   ├── check.toml                   # Prompt body for /check
+│   ├── deploy.toml                  # Prompt body for /deploy
+│   ├── quick-push.toml              # Prompt body for /quick-push
+│   ├── save-to-md.toml              # Prompt body for /save-to-md
+│   ├── validate-plan.toml           # Prompt body for /validate-plan
+│   └── homelab/                     # Prompt bodies for /homelab:* commands
+│       ├── disk-space.toml
+│       ├── docker-health.toml
+│       ├── system-resources.toml
+│       └── zfs-health.toml
+│
+├── references/                      # Shared reference documentation
+│   └── security-patterns.md         # Reusable security patterns for scripts
+│
+├── skills/                          # All service skills (16 services + 2 homelab-core)
 │   ├── CLAUDE.md                    # Skill development guidelines
-│   ├── setup/SKILL.md               # /homelab-core:setup — interactive credential wizard
-│   ├── health/
+│   ├── homelab-setup/SKILL.md       # /homelab-core:setup — interactive credential wizard
+│   ├── homelab-health/
 │   │   ├── SKILL.md                 # /homelab-core:health — service health dashboard
-│   │   └── scripts/check-health.sh # Curl-checks all services, outputs JSON
-│   └── [service]/                   # e.g., plex/, radarr/, unraid/, ...
+│   │   └── scripts/check-health.sh  # Curl-checks all services, outputs JSON
+│   └── [service]/                   # e.g., plex/, radarr/, sonarr/, ...
 │       ├── SKILL.md                 # Skill definition
 │       ├── scripts/                 # Bash/Python/Node API scripts
 │       └── references/              # API docs, quick-reference, troubleshooting
@@ -121,19 +94,16 @@ Bash path only — plugin path uses `~/.claude/plugins/cache/`, no symlinks.
 ```
 ~/.claude/
 ├── agents/
-│   ├── agentic-orchestrator.md  → ~/claude-homelab/agents/agentic-orchestrator.md
-│   ├── exa-specialist.md        → ~/claude-homelab/agents/exa-specialist.md
-│   ├── firecrawl-specialist.md  → ~/claude-homelab/agents/firecrawl-specialist.md
 │   └── notebooklm-specialist.md → ~/claude-homelab/agents/notebooklm-specialist.md
 ├── skills/
 │   ├── plex/                    → ~/claude-homelab/skills/plex/
 │   ├── radarr/                  → ~/claude-homelab/skills/radarr/
-│   └── ...                      (all 22 service skills)
+│   └── ...                      (all 18 skill directories)
 └── commands/
     ├── check.md                 → ~/claude-homelab/commands/check.md
+    ├── deploy.md                → ~/claude-homelab/commands/deploy.md
     ├── quick-push.md            → ~/claude-homelab/commands/quick-push.md
     ├── save-to-md.md            → ~/claude-homelab/commands/save-to-md.md
-    ├── setup-homelab.md         → ~/claude-homelab/commands/setup-homelab.md
     ├── validate-plan.md         → ~/claude-homelab/commands/validate-plan.md
     ├── homelab/                 → ~/claude-homelab/commands/homelab/
     └── notebooklm/              → ~/claude-homelab/commands/notebooklm/
@@ -173,6 +143,23 @@ Key fields:
 - **`allowed-tools`** — pre-approved tools (no permission prompts)
 - **`$ARGUMENTS`** — replaced with user input after the command
 - **`!`command``** — dynamic context injection (runs shell command, injects output)
+
+### Prompt Definitions (prompts/)
+
+Command prompt bodies live in `prompts/` as `.toml` files, separate from the `.md` command definitions in `commands/`. This separation keeps command metadata (frontmatter, description) distinct from the prompt content.
+
+**Format:**
+```toml
+name = "command-name"
+description = "Short description"
+prompt = """
+Prompt body with instructions, dynamic context injection, etc.
+"""
+```
+
+The `prompts/` directory mirrors the `commands/` structure:
+- `prompts/check.toml` — prompt body for `/check`
+- `prompts/homelab/docker-health.toml` — prompt body for `/homelab:docker-health`
 
 ### Adding New Symlinks
 
@@ -217,7 +204,7 @@ The setup script:
 
 ### 1. Credential Management
 
-**All credentials are stored in a single `.env` file at repository root.**
+**All credentials are stored in `~/.claude-homelab/.env` (copied from `.env.example` at install).**
 
 **Security requirements:**
 - ✅ `.env` is gitignored (NEVER commit credentials)
@@ -255,43 +242,7 @@ SERVICE2_API_KEY="key2"
 
 **.env.example Template:**
 
-The installer copies `.env.example` to `~/.claude-homelab/.env`. Template contents:
-
-```bash
-# =============================================================================
-# PLEX MEDIA SERVER
-# =============================================================================
-PLEX_URL=https://your-plex-url:32400
-PLEX_TOKEN=your_x_plex_token
-
-# =============================================================================
-# RADARR (MOVIE MANAGEMENT)
-# =============================================================================
-RADARR_URL=https://your-radarr-url
-RADARR_API_KEY=your_api_key
-RADARR_DEFAULT_QUALITY_PROFILE=1
-
-# =============================================================================
-# SONARR (TV SERIES MANAGEMENT)
-# =============================================================================
-SONARR_URL=https://your-sonarr-url
-SONARR_API_KEY=your_api_key
-SONARR_DEFAULT_QUALITY_PROFILE=1
-
-# =============================================================================
-# GOTIFY (NOTIFICATION SERVER)
-# =============================================================================
-GOTIFY_URL=https://your-gotify-url
-GOTIFY_TOKEN=your_token
-
-# =============================================================================
-# TAILSCALE (VPN/MESH NETWORK)
-# =============================================================================
-TAILSCALE_API_KEY=your_api_key
-TAILSCALE_TAILNET=your_tailnet_or_dash
-```
-
-The full template is in `.env.example`. It covers all 21 service plugins grouped by category.
+The installer copies `.env.example` to `~/.claude-homelab/.env`. See `.env.example` for the full template covering all service integrations grouped by category.
 
 **Security Checklist:**
 - [ ] `~/.claude-homelab/.env` has `chmod 600` permissions
@@ -335,7 +286,7 @@ load_service_credentials "service-name" "URL_VAR" "API_KEY_VAR"
 **Service skills** — In `skills/`, one directory per service:
 - Each service at `skills/<name>/` with `SKILL.md`, `scripts/`, and `references/`
 - homelab-core's own skills (`setup/`, `health/`) also live here
-- All service-specific skills belong here (22 services total)
+- All service-specific skills belong here (16 services + 2 core = 18 total)
 
 **Agents** — Specialized AI agents in `agents/`:
 - Markdown files defining agent behavior
@@ -566,131 +517,7 @@ log_success "Operation completed"
 
 ### Security Patterns
 
-**Input Sanitization:**
-
-Always sanitize user input before using in commands, URLs, or API calls.
-
-```bash
-# Sanitize user input - remove dangerous characters
-sanitize_input() {
-    local input="$1"
-    # Remove shell metacharacters and command injection attempts
-    echo "$input" | sed 's/[;&|`$(){}[\]<>\\]//g' | tr -d '\n\r'
-}
-
-# Usage
-user_query=$(sanitize_input "$1")
-```
-
-**Command Injection Prevention:**
-
-Never directly interpolate user input into shell commands or URLs.
-
-```bash
-# ❌ DANGEROUS - Command injection vulnerability
-curl "https://api.example.com/search?q=$user_input"
-
-# ✅ SAFE - Properly escaped and quoted
-query=$(printf '%s' "$user_input" | jq -sRr @uri)
-curl "https://api.example.com/search?q=${query}"
-```
-
-**URL Encoding:**
-
-Always URL-encode user input when building API requests.
-
-```bash
-# URL encode function
-url_encode() {
-    local string="$1"
-    printf '%s' "$string" | jq -sRr @uri
-}
-
-# Usage
-search_term=$(url_encode "user's search & query")
-curl "https://api.example.com/search?q=${search_term}"
-```
-
-**SQL Injection Prevention (Python):**
-
-Use parameterized queries, NEVER string concatenation.
-
-```python
-# ❌ DANGEROUS - SQL injection vulnerability
-cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
-
-# ✅ SAFE - Parameterized query
-cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
-```
-
-**API Key Protection:**
-
-Never log, print, or expose credentials.
-
-```bash
-# ❌ DANGEROUS - Logs API key
-echo "Using API key: $API_KEY"
-curl -H "Authorization: Bearer $API_KEY" https://api.example.com
-
-# ✅ SAFE - No credential exposure
-if [ -z "$API_KEY" ]; then
-    log_error "API_KEY not set"
-    exit 1
-fi
-curl -H "Authorization: Bearer $API_KEY" https://api.example.com 2>&1 | grep -v "Authorization"
-```
-
-**Path Traversal Prevention:**
-
-Validate file paths to prevent directory traversal attacks.
-
-```bash
-# Validate file path is within allowed directory
-validate_path() {
-    local file_path="$1"
-    local base_dir="$2"
-
-    # Resolve to absolute path
-    local abs_path=$(realpath -m "$file_path" 2>/dev/null)
-    local abs_base=$(realpath "$base_dir")
-
-    # Check if path starts with base directory
-    if [[ "$abs_path" != "$abs_base"* ]]; then
-        log_error "Invalid path: $file_path (outside base directory)"
-        return 1
-    fi
-
-    echo "$abs_path"
-}
-
-# Usage
-safe_path=$(validate_path "$user_file" "/allowed/directory") || exit 1
-```
-
-**JSON Response Parsing:**
-
-Always validate JSON structure before parsing.
-
-```bash
-# Validate JSON response
-parse_json_safely() {
-    local json="$1"
-    local key="$2"
-
-    # Check if valid JSON
-    if ! echo "$json" | jq empty 2>/dev/null; then
-        log_error "Invalid JSON response"
-        return 1
-    fi
-
-    # Extract value
-    echo "$json" | jq -r ".$key // empty"
-}
-
-# Usage
-response=$(curl -s https://api.example.com/data)
-value=$(parse_json_safely "$response" "data.field") || exit 1
-```
+See `references/security-patterns.md` for detailed patterns covering input sanitization, command injection prevention, URL encoding, SQL injection prevention, API key protection, path traversal prevention, and JSON response parsing.
 
 ## Testing
 
@@ -802,17 +629,40 @@ version: 1.2.0 → 2.0.0  # MAJOR bump
 
 ---
 
-**Version:** 1.1.0
-**Last Updated:** 2026-03-31
+**Version:** 1.2.0
+**Last Updated:** 2026-04-03
 **Changelog:**
-- Added Table of Contents
-- Added Glossary section
-- Added Automated Symlink Setup section with scripts
-- Added .env.example template examples
-- Added Security Patterns section with input sanitization examples
+- Fixed stale agent count (4 → 1), skill count (22 → 18), plugin count (23 → 27)
+- Removed phantom agents (agentic-orchestrator, exa-specialist, firecrawl-specialist)
+- Added /deploy command and prompts/ directory to structure
+- Extracted .toml prompt sidecars to prompts/ directory
+- Moved security patterns to references/security-patterns.md
+- Replaced inline .env template with pointer to .env.example
+- Fixed .env location contradiction
+- Removed Table of Contents (use search instead)
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Issue Tracking & Session Protocol
 
 Uses `bd` (beads) for all task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists. Session close protocol (git push, bd dolt push) is injected by the startup hook — run `bd prime` for full context.
 <!-- END BEADS INTEGRATION -->
+
+
+## Version Bumping
+
+**Every feature branch push MUST bump the version in ALL version-bearing files.**
+
+Bump type is determined by the commit message prefix:
+- `feat!:` or `BREAKING CHANGE` → **major** (X+1.0.0)
+- `feat` or `feat(...)` → **minor** (X.Y+1.0)
+- Everything else (`fix`, `chore`, `refactor`, `test`, `docs`, etc.) → **patch** (X.Y.Z+1)
+
+**Files to update (if they exist in this repo):**
+- `Cargo.toml` — `version = "X.Y.Z"` in `[package]`
+- `package.json` — `"version": "X.Y.Z"`
+- `pyproject.toml` — `version = "X.Y.Z"` in `[project]`
+- `.claude-plugin/plugin.json` — `"version": "X.Y.Z"`
+- `.codex-plugin/plugin.json` — `"version": "X.Y.Z"`
+- `gemini-extension.json` — `"version": "X.Y.Z"`
+
+All files MUST have the same version. Never bump only one file.
