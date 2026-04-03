@@ -1,5 +1,5 @@
 ---
-name: health
+name: homelab-health
 description: "Unified health dashboard for all configured homelab services. Use when the user wants to check service status, verify credentials work, see which services are reachable, or diagnose connectivity issues. Triggers on: 'check health', 'service status', 'what's running', 'is plex up', 'verify my setup', 'homelab health', or after running /homelab-core:setup."
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: setup
+name: homelab-setup
 description: "Interactive credential setup wizard for claude-homelab. Use when the user wants to configure credentials, set up a new service, update API keys, or run initial setup after installing the homelab-core plugin. Triggers on: 'setup credentials', 'configure plex', 'add my API key', 'I just installed homelab-core', 'setup homelab', or any mention of needing to configure a specific service."
 ---
 
