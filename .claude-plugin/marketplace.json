@@ -218,6 +218,150 @@
         "search"
       ],
       "homepage": "https://github.com/jmagar/axon"
+    },
+    {
+      "name": "bytestash",
+      "source": "./skills/bytestash",
+      "description": "ByteStash code snippet management. Store, search, and organize code snippets.",
+      "version": "1.0.0",
+      "category": "utilities",
+      "tags": ["bytestash", "snippets", "code", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "gh-address-comments",
+      "source": "./skills/gh-address-comments",
+      "description": "Address GitHub PR review comments. Fetch, implement, and verify resolution of PR feedback.",
+      "version": "1.0.0",
+      "category": "dev-tools",
+      "tags": ["github", "pull-requests", "code-review", "automation"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "linkding",
+      "source": "./skills/linkding",
+      "description": "Linkding bookmark management. Save, search, tag, and organize bookmarks.",
+      "version": "1.0.0",
+      "category": "utilities",
+      "tags": ["linkding", "bookmarks", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "memos",
+      "source": "./skills/memos",
+      "description": "Memos note-taking service. Create, search, tag, and manage quick notes and memos.",
+      "version": "1.0.0",
+      "category": "utilities",
+      "tags": ["memos", "notes", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "notebooklm",
+      "source": "./skills/notebooklm",
+      "description": "Google NotebookLM integration. Create notebooks, add sources, generate podcasts, videos, and research artifacts.",
+      "version": "1.0.0",
+      "category": "research",
+      "tags": ["notebooklm", "research", "ai", "google"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "paperless-ngx",
+      "source": "./skills/paperless-ngx",
+      "description": "Paperless-ngx document management. Upload, search, tag, and organize documents.",
+      "version": "1.0.0",
+      "category": "utilities",
+      "tags": ["paperless", "documents", "ocr", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "plex",
+      "source": "./skills/plex",
+      "description": "Plex Media Server management. Browse libraries, search media, manage playlists, and monitor activity.",
+      "version": "1.0.0",
+      "category": "media",
+      "tags": ["plex", "media", "streaming", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "prowlarr",
+      "source": "./skills/prowlarr",
+      "description": "Prowlarr indexer management. Add, configure, test, and search indexers.",
+      "version": "1.0.0",
+      "category": "media",
+      "tags": ["prowlarr", "indexers", "search", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "qbittorrent",
+      "source": "./skills/qbittorrent",
+      "description": "qBittorrent download management. Add, monitor, pause, and manage torrent downloads.",
+      "version": "1.0.0",
+      "category": "downloads",
+      "tags": ["qbittorrent", "torrents", "downloads", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "radarr",
+      "source": "./skills/radarr",
+      "description": "Radarr movie management. Search, add, monitor, and manage movie collections.",
+      "version": "1.0.0",
+      "category": "media",
+      "tags": ["radarr", "movies", "media", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "radicale",
+      "source": "./skills/radicale",
+      "description": "Radicale CalDAV/CardDAV server management. Manage calendars, contacts, and address books.",
+      "version": "1.0.0",
+      "category": "utilities",
+      "tags": ["radicale", "caldav", "carddav", "calendar", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "sabnzbd",
+      "source": "./skills/sabnzbd",
+      "description": "SABnzbd Usenet download management. Add, monitor, and manage NZB downloads.",
+      "version": "1.0.0",
+      "category": "downloads",
+      "tags": ["sabnzbd", "usenet", "downloads", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "sonarr",
+      "source": "./skills/sonarr",
+      "description": "Sonarr TV series management. Search, add, monitor, and manage TV show collections.",
+      "version": "1.0.0",
+      "category": "media",
+      "tags": ["sonarr", "tv", "series", "media", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "tailscale",
+      "source": "./skills/tailscale",
+      "description": "Tailscale VPN mesh network management. Monitor devices, manage routes, and check network status.",
+      "version": "1.0.0",
+      "category": "infrastructure",
+      "tags": ["tailscale", "vpn", "networking", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "tautulli",
+      "source": "./skills/tautulli",
+      "description": "Tautulli Plex monitoring. View activity, history, statistics, and user analytics.",
+      "version": "1.0.0",
+      "category": "media",
+      "tags": ["tautulli", "plex", "monitoring", "analytics", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
+    },
+    {
+      "name": "zfs",
+      "source": "./skills/zfs",
+      "description": "ZFS storage management. Monitor pools, datasets, snapshots, scrubs, and replication.",
+      "version": "1.0.0",
+      "category": "infrastructure",
+      "tags": ["zfs", "storage", "snapshots", "homelab"],
+      "homepage": "https://github.com/jmagar/claude-homelab"
     }
   ]
 }
