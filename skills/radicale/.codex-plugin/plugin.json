@@ -1,0 +1,32 @@
+{
+  "name": "radicale",
+  "version": "1.1.2",
+  "description": "Manage calendars and contacts on self-hosted Radicale CalDAV/CardDAV server - events, contacts, natural language parsing",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "radicale",
+    "caldav",
+    "carddav",
+    "calendar",
+    "contacts"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Radicale",
+    "shortDescription": "Manage CalDAV calendars and CardDAV contacts on a self-hosted...",
+    "longDescription": "Manage CalDAV calendars and CardDAV contacts on a self-hosted Radicale server.",
+    "developerName": "jmagar",
+    "category": "Utilities",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}

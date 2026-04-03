@@ -1,0 +1,32 @@
+{
+  "name": "notebooklm",
+  "version": "1.0.2",
+  "description": "Programmatic access to Google NotebookLM - create notebooks, add sources, chat with content, generate artifacts (podcasts, videos, reports)",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "notebooklm",
+    "research",
+    "summarization",
+    "artifacts",
+    "automation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "NotebookLM",
+    "shortDescription": "Programmatic NotebookLM workflows for notebooks, sources, chat,...",
+    "longDescription": "Programmatic NotebookLM workflows for notebooks, sources, chat, generation, and artifact downloads.",
+    "developerName": "jmagar",
+    "category": "Research",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}

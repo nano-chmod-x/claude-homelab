@@ -1,0 +1,32 @@
+{
+  "name": "linkding",
+  "version": "1.2.3",
+  "description": "Manage bookmarks with Linkding API - save, search, tag, archive bookmarks and create bundles",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "linkding",
+    "bookmarks",
+    "links",
+    "search",
+    "utilities"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Linkding",
+    "shortDescription": "Manage bookmarks in Linkding with search, tagging, creation,...",
+    "longDescription": "Manage bookmarks in Linkding with search, tagging, creation, updates, and cleanup workflows.",
+    "developerName": "jmagar",
+    "category": "Utilities",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}

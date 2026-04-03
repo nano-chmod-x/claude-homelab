@@ -1,0 +1,32 @@
+{
+  "name": "sonarr",
+  "version": "1.4.3",
+  "description": "Search and add TV shows to Sonarr library. Includes both safe operations and destructive operations (with confirmation)",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "sonarr",
+    "tv",
+    "series",
+    "media",
+    "automation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Sonarr",
+    "shortDescription": "Search, add, inspect, and remove TV series in Sonarr with guided...",
+    "longDescription": "Search, add, inspect, and remove TV series in Sonarr with guided library workflows.",
+    "developerName": "jmagar",
+    "category": "Media",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}

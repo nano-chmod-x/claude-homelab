@@ -1,9 +1,0 @@
-{
-  "name": "overseerr",
-  "description": "Request movies and TV shows via Overseerr, monitor request status, and manage media requests",
-  "version": "1.2.2",
-  "author": {
-    "name": "jmagar",
-    "email": "jmagar@users.noreply.github.com"
-  }
-}

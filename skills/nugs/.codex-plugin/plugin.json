@@ -1,0 +1,32 @@
+{
+  "name": "nugs",
+  "version": "2.0.0",
+  "description": "Download and manage live music from Nugs.net with video-first support - browse 13,000+ concerts, download audio/video, track coverage",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "nugs",
+    "music",
+    "downloads",
+    "concerts",
+    "media"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Nugs",
+    "shortDescription": "Browse, download, and manage live music from Nugs.net using the...",
+    "longDescription": "Browse, download, and manage live music from Nugs.net using the local Nugs CLI integration.",
+    "developerName": "jmagar",
+    "category": "Media",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}

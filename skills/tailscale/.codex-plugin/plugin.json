@@ -1,0 +1,32 @@
+{
+  "name": "tailscale",
+  "version": "1.2.3",
+  "description": "Manage Tailscale mesh VPN networks - device status, file sharing, funnel, serve, auth keys, exit nodes",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "tailscale",
+    "networking",
+    "tailnet",
+    "infrastructure",
+    "vpn"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Tailscale",
+    "shortDescription": "Inspect and manage Tailnet state, devices, and Tailscale networking...",
+    "longDescription": "Inspect and manage Tailnet state, devices, and Tailscale networking workflows.",
+    "developerName": "jmagar",
+    "category": "Infrastructure",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}

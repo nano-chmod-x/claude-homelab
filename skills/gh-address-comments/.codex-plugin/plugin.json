@@ -1,0 +1,32 @@
+{
+  "name": "gh-address-comments",
+  "version": "1.1.2",
+  "description": "Address PR comments and fix review feedback using gh CLI - systematic handling of GitHub code review comments",
+  "author": {
+    "name": "jmagar",
+    "email": "jmagar@users.noreply.github.com",
+    "url": "https://github.com/jmagar"
+  },
+  "homepage": "https://github.com/jmagar/claude-homelab",
+  "repository": "https://github.com/jmagar/claude-homelab",
+  "keywords": [
+    "github",
+    "pull-requests",
+    "code-review",
+    "comments",
+    "automation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GitHub Address Comments",
+    "shortDescription": "Pull GitHub PR review comments, work through them systematically,...",
+    "longDescription": "Pull GitHub PR review comments, work through them systematically, verify resolutions, and mark threads resolved.",
+    "developerName": "jmagar",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jmagar/claude-homelab"
+  }
+}
