@@ -101,15 +101,28 @@ if [[ -f "$REPO_ROOT/.claude-plugin/marketplace.json" ]]; then
     plugin_count=$(jq '.plugins | length' "$REPO_ROOT/.claude-plugin/marketplace.json" 2>/dev/null || echo "?")
     log_ok "marketplace.json valid ($plugin_count plugins listed)"
 
-    # Verify no dead source paths
+    # Verify local source paths exist; GitHub-backed sources are not local directories.
     dead=0
-    while IFS= read -r src; do
-        full_path="$REPO_ROOT/$src"
-        if [[ ! -d "$full_path" && "$src" != "./" ]]; then
-            log_warn "Dead marketplace entry: $src"
-            ((dead++))
+    while IFS=$'\t' read -r name source_type source_value; do
+        if [[ "$source_type" == "string" ]]; then
+            src="${source_value#./}"
+            full_path="$REPO_ROOT/$src"
+            if [[ ! -d "$full_path" && "$source_value" != "./" ]]; then
+                log_warn "Dead marketplace entry ($name): $source_value"
+                ((dead++))
+            fi
         fi
-    done < <(jq -r '.plugins[].source' "$REPO_ROOT/.claude-plugin/marketplace.json" 2>/dev/null | sed 's|^\./||')
+    done < <(
+        jq -r '
+            .plugins[]
+            | [
+                .name,
+                (.source | type),
+                (if (.source | type) == "string" then .source else .source.repo end)
+              ]
+            | @tsv
+        ' "$REPO_ROOT/.claude-plugin/marketplace.json" 2>/dev/null
+    )
     [[ "$dead" -eq 0 ]] && log_ok "All marketplace source paths exist"
 else
     log_err ".claude-plugin/marketplace.json missing"
@@ -125,20 +138,27 @@ fi
 # Check service plugin manifests
 missing_manifests=0
 total_services=0
-for d in "$REPO_ROOT/service-plugins"/*/; do
-    ((total_services++))
-    if [[ ! -f "$d.claude-plugin/plugin.json" ]]; then
-        log_warn "Missing plugin.json: $d"
-        ((missing_manifests++))
-    fi
-done
-if [[ "$total_services" -gt 0 ]]; then
-    good=$(( total_services - missing_manifests ))
-    if [[ "$missing_manifests" -eq 0 ]]; then
-        log_ok "$total_services service plugins with valid manifests"
+if [[ -d "$REPO_ROOT/service-plugins" ]]; then
+    for d in "$REPO_ROOT/service-plugins"/*/; do
+        [[ -d "$d" ]] || continue
+        ((total_services++))
+        if [[ ! -f "$d.claude-plugin/plugin.json" ]]; then
+            log_warn "Missing plugin.json: $d"
+            ((missing_manifests++))
+        fi
+    done
+    if [[ "$total_services" -gt 0 ]]; then
+        good=$(( total_services - missing_manifests ))
+        if [[ "$missing_manifests" -eq 0 ]]; then
+            log_ok "$total_services service plugins with valid manifests"
+        else
+            log_warn "$good/$total_services service plugins have plugin.json ($missing_manifests missing)"
+        fi
     else
-        log_warn "$good/$total_services service plugins have plugin.json ($missing_manifests missing)"
+        log_warn "service-plugins/ exists but contains no plugin directories"
     fi
+else
+    log_warn "service-plugins/ missing — skipping standalone manifest checks"
 fi
 
 # Check homelab-core skills

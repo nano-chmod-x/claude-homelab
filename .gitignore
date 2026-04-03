@@ -1,153 +1,72 @@
-# =============================================================================
-# HOMELAB .gitignore
-# =============================================================================
-
-# Environment Variables (CRITICAL - NEVER COMMIT)
-# Only .env.example is allowed - all other .env files are ignored
+# ── Secrets ──────────────────────────────────────────────────────────────────
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
-# Configuration Files (may contain secrets)
-config.json
-**/config.json
+# ── Runtime artifacts ────────────────────────────────────────────────────────
+logs/
+backups/
+*.log
+*.pid
+*.bak
+*.bak-*
 
-# Credentials and Secrets
-credentials/
-*.key
-*.pem
-*.p12
-*.pfx
-*.crt
-*.cer
+# ── Claude Code / AI tooling ────────────────────────────────────────────────
+.claude/settings.local.json
+.claude/worktrees/
+.omc/
+.lavra/
+.beads/
+.dolt/
+*.db
+*.db-shm
+*.db-wal
+.beads-credential-key
+.serena/
+.worktrees/
+.full-review/
+.full-review-archive-*
+.bivvy
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-# NOTE: Don't ignore our shell lib/ directory - only Python lib dirs
-# lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.venv/
-venv/
-ENV/
-env/
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.npm
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-
-# TypeScript
-*.tsbuildinfo
-dist/
-build/
-
-# IDEs and Editors
+# ── IDE / editor ─────────────────────────────────────────────────────────────
 .vscode/
+.cursor/
+.windsurf/
+.1code/
 .idea/
+.zed/
+*.iml
 *.swp
 *.swo
 *~
-.DS_Store
-.project
-.classpath
-.settings/
+.emdash.json
 
-# Docker
-docker-compose.override.yml
-
-# Plugin registry artifacts
-.clawdhub/
-
-# Cache and Temporary Files
-.cache/
-*.log
-*.tmp
-*.temp
-temp/
-tmp/
-
-# oh-my-claudecode state
-.omc/
-
-# Session and Documentation Directories
-.docs/
-.serena/
-docs/reorg/
-docs/reports/
-docs/sessions/
-docs/superpowers/
-
-# Debug and Dump Files
-*_debug.json
-*_dump.json
-*debug*.json
-*dump*.json
-
-# Archive Files
-*.zip
-*.tar
-*.tar.gz
-*.tgz
-*.rar
-*.7z
-
-# OS Files
+# ── OS generated ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# Backup Files
-*.bak
-*.backup
-*~
+# ── Caches (ALL tool caches go here) ─────────────────────────────────────────
+.cache/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# ── Documentation artifacts (session/plan docs, not reference) ───────────────
+.docs/
+docs/plans/
+docs/sessions/
+docs/reports/
+docs/research/
+docs/superpowers/
+specs/
 
-# Session Logs (keep structure, ignore sensitive content if needed)
-# .docs/sessions/*.md
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[oc]
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
 
-# Script Debug Files
-skills/*/scripts/*_debug.json
-
-# Lavra
-.lavra/
-
-# Beads / Dolt files (added by bd init)
-.dolt/
-.beads-credential-key
+# ── Node / TypeScript ────────────────────────────────────────────────────────
+node_modules/
+dist/
+*.tsbuildinfo
