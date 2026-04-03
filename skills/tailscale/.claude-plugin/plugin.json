@@ -1,9 +1,0 @@
-{
-  "name": "tailscale",
-  "description": "Manage Tailscale mesh VPN networks - device status, file sharing, funnel, serve, auth keys, exit nodes",
-  "version": "1.2.3",
-  "author": {
-    "name": "jmagar",
-    "email": "jmagar@users.noreply.github.com"
-  }
-}

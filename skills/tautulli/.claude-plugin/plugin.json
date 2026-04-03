@@ -1,9 +1,0 @@
-{
-  "name": "tautulli",
-  "description": "Monitor and analyze Plex Media Server usage via Tautulli analytics API - viewing history, user statistics, stream analytics",
-  "version": "1.0.3",
-  "author": {
-    "name": "jmagar",
-    "email": "jmagar@users.noreply.github.com"
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "name": "sonarr",
-  "description": "Search and add TV shows to Sonarr library. Includes both safe operations and destructive operations (with confirmation)",
-  "version": "1.4.3",
-  "author": {
-    "name": "jmagar",
-    "email": "jmagar@users.noreply.github.com"
-  }
-}
