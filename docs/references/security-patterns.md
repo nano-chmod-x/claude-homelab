@@ -1,6 +1,7 @@
 # Security Patterns
 
-Reusable security patterns for all skill scripts. Follow these in every script that handles user input, credentials, or external data.
+Reusable security patterns for all skill scripts. Follow these in every script
+that handles user input, credentials, or external data.
 
 ## Input Sanitization
 

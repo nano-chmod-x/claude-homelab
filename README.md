@@ -1,115 +1,150 @@
-# Claude Homelab: Core Plugin Hub
+# Claude Homelab
 
-> **The central management hub for self-hosted homelab services, providing specialized agents, slash commands, and unified credential orchestration.**
+Current release: 1.4.0.
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](CHANGELOG.md)
-[![Marketplace](https://img.shields.io/badge/marketplace-27_plugins-orange.svg)]( .claude-plugin/marketplace.json)
-[![FastMCP](https://img.shields.io/badge/FastMCP-Enabled-brightgreen.svg)](https://github.com/jlowin/fastmcp)
-[![License](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
+Homelab plugin hub for Claude Code, Codex, and Gemini. This repository is the source of truth for the `homelab-core` plugin, bundled skill-only integrations, agents, commands, prompts, and shared credential bootstrapping.
 
----
+## What this repository is
 
-## ✨ Overview
-`homelab-core` is the foundation of the Claude Homelab ecosystem. It manages the marketplace manifest, provides shared credential bootstrapping, and exposes a powerful suite of agents and slash commands designed to turn Claude into a senior homelab administrator.
+`claude-homelab` is both:
 
-### 🎯 Key Features
-| Feature | Description |
-|---------|-------------|
-| **Core Skills** | Integrated `setup` (credential wizard) and `health` (dashboard) skills |
-| **Command Suite** | 15+ specialized slash commands for Docker, ZFS, and system health |
-| **Marketplace** | Single source of truth for 27 local and external MCP plugins |
-| **Agents** | Specialized specialists (e.g., `notebooklm-specialist`) for complex workflows |
+- the `homelab-core` plugin published through the Claude marketplace
+- the canonical mono-repo for bundled skill-only integrations such as bytestash, gh-address-comments, linkding, memos, notebooklm, paperless-ngx, plex, prowlarr, qbittorrent, radarr, radicale, sabnzbd, sonarr, tailscale, tautulli, and zfs
+- the source for the Codex plugin manifest and Gemini extension manifest that mirror the same core homelab workflow surface
 
----
+The repo root is the source of truth. Do not edit generated copies in `~/.claude/` or other client-specific caches directly.
 
-## 🎯 Claude Code Integration
-Install the core plugin hub directly from the marketplace:
+## What ships in this repo
+
+- `agents/`: top-level agents; currently `notebooklm-specialist`
+- `commands/`: slash command definitions such as `/check`, `/deploy`, `/quick-push`, `/save-to-md`, and `/validate-plan`
+- `prompts/`: prompt sidecars for commands
+- `skills/`: 18 tracked skill directories plus `skills/.cache/` for generated cache data
+- `references/`: shared reference docs such as security patterns
+- `scripts/`: install, bootstrap, setup, and verification helpers
+- `.claude-plugin/`: Claude marketplace manifest and plugin catalog
+- `.codex-plugin/`: Codex plugin manifest
+- `gemini-extension.json`: Gemini extension manifest
+- `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`, and `.env.example`: repo guidance, release history, and credential template
+
+## Installation
+
+### Claude marketplace
 
 ```bash
-# Add the marketplace
 /plugin marketplace add jmagar/claude-homelab
-
-# Install the core hub
 /plugin install homelab-core @jmagar-claude-homelab
 ```
 
----
+### Bash / symlink install
 
-## ⚙️ Configuration & Credentials
-All homelab services share a central credential store managed by `homelab-core`.
-
-**Location:** `~/.claude-homelab/.env`
-
-### Bootstrapping Credentials
 ```bash
-# Interactive setup wizard
-/homelab-core:setup
-
-# Manual bootstrap via script
-curl -sSL https://raw.githubusercontent.com/jmagar/claude-homelab/main/scripts/setup-creds.sh | bash
-```
-
-> **Security Note:** `homelab-core` enforces `chmod 600` on your `.env` file and provides a shared `load-env.sh` helper for all sub-plugins.
-
----
-
-## 🛠️ Available Tools & Resources
-
-### 🔧 Top-Level Commands
-| Command | Argument Hint | Description |
-|---------|---------------|-------------|
-| **`/check`** | `[target]` | System-wide health and dependency validation |
-| **`/deploy`** | `<env>` | Managed deployment workflow for homelab stacks |
-| **`/quick-push`** | `[msg]` | Standardized git commit and push workflow |
-| **`/save-to-md`** | `<file>` | Export current session context to structured Markdown |
-
-### 🔧 Namespaced Commands
-| Namespace | Commands | Description |
-|-----------|----------|-------------|
-| **`/homelab`** | `system-resources`, `docker-health`, `disk-space`, `zfs-health` | Infrastructure monitoring |
-| **`/notebooklm`** | `create`, `ask`, `source`, `generate`, `download`, `list`, `research` | Automation for Google NotebookLM |
-
-### 📊 Resources
-| URI | Description | Output Format |
-|-----|-------------|---------------|
-| `ui://homelab/health` | Real-time service health dashboard | Interactive Widget |
-| `ui://homelab/stats` | System resource overview | Live Metrics |
-
----
-
-## 🏗️ Architecture & Design
-`homelab-core` uses a **Symlink-Driven Architecture** for bash-path installs and a **Marketplace-First** model for Claude Code.
-- **Shared Library:** Centralized `scripts/load-env.sh` for all plugins.
-- **Prompts Layer:** Separated `.toml` prompt sidecars in `prompts/` for maintainability.
-- **Verification:** Mandatory `scripts/verify.sh` to ensure ecosystem integrity.
-
----
-
-## 🔧 Development
-### Setup
-```bash
-# Create all symlinks
+./scripts/install.sh
 ./scripts/setup-symlinks.sh
-
-# Verify the environment
 ./scripts/verify.sh
 ```
 
-### Quality Standards
-- **Bash:** `set -euo pipefail` strict mode required for all scripts.
-- **JSON:** All tools must return machine-readable JSON on success/failure.
-- **Version Bumping:** Mandatory version synchronization across all manifest files.
+The bash path creates symlinks into `~/.claude/` and installs shared runtime files into `~/.claude-homelab/`.
 
----
+## Credential model
 
-## 🐛 Troubleshooting
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| **.env missing** | First-time setup | Run `/homelab-core:setup` |
-| **Symlink broken** | Manual file move | Run `scripts/setup-symlinks.sh` |
-| **API Error** | Credential mismatch | Check `~/.claude-homelab/.env` |
+Shared credentials live in:
 
----
+```bash
+~/.claude-homelab/.env
+```
 
-## 📄 License
-MIT © jmagar
+Bootstrapping options:
+
+```bash
+/homelab-core:setup
+./scripts/setup-creds.sh
+```
+
+Security rules:
+
+- `.env` must never be committed
+- permissions should be `chmod 600 ~/.claude-homelab/.env`
+- service scripts load credentials via `scripts/load-env.sh`
+
+## Top-level command surface
+
+### Root commands
+
+| Command | Purpose |
+| --- | --- |
+| `/check` | Inspect the most recent screenshot and describe it |
+| `/deploy` | Build and deploy MCP/plugin repos from the marketplace |
+| `/quick-push` | Standardized commit-and-push workflow |
+| `/save-to-md` | Save current session context to Markdown |
+| `/validate-plan` | Audit technical plans against repo standards |
+
+### Namespaced commands
+
+| Namespace | Commands |
+| --- | --- |
+| `/homelab` | `system-resources`, `docker-health`, `disk-space`, `zfs-health` |
+| `/notebooklm` | `create`, `ask`, `source`, `generate`, `download`, `list`, `research` |
+
+## Marketplace scope
+
+The marketplace catalog in this repo spans 27 entries total:
+
+- 1 core plugin: `homelab-core`
+- 10 external MCP repos: `overseerr-mcp`, `unraid-mcp`, `unifi-mcp`, `gotify-mcp`, `swag-mcp`, `synapse-mcp`, `arcane-mcp`, `syslog-mcp`, `plugin-lab`, and `axon`
+- 16 bundled skill-only plugins: `bytestash`, `gh-address-comments`, `linkding`, `memos`, `notebooklm`, `paperless-ngx`, `plex`, `prowlarr`, `qbittorrent`, `radarr`, `radicale`, `sabnzbd`, `sonarr`, `tailscale`, `tautulli`, and `zfs`
+
+## Repository layout
+
+```text
+agents/                 Top-level specialist agents
+commands/               Slash command definitions
+prompts/                Prompt sidecars for commands
+skills/                 Bundled service skills and generated cache data
+references/             Shared reference docs
+scripts/                Install/setup/verification helpers
+.claude-plugin/         Claude marketplace/plugin manifests
+.codex-plugin/          Codex plugin manifest
+gemini-extension.json   Gemini extension manifest
+AGENTS.md               Repo-wide development instructions
+CLAUDE.md               Claude-facing project instructions
+CHANGELOG.md            Release history
+.env.example            Shared credential template
+```
+
+## Development workflow
+
+```bash
+./scripts/setup-symlinks.sh
+./scripts/verify.sh
+```
+
+Project rules that matter when editing:
+
+- use `bd` for task tracking, not markdown TODOs
+- keep bundled skill docs, command definitions, and prompt sidecars in sync
+- if a change bumps a version, update every version-bearing manifest plus `CHANGELOG.md`
+- the repo is the source of truth; never patch files directly in `~/.claude/`
+
+## Verification
+
+Recommended checks after doc or command changes:
+
+```bash
+./scripts/verify.sh
+rtk rg -n "^## " README.md AGENTS.md CLAUDE.md
+```
+
+For command changes, confirm the command definition under `commands/` and the matching prompt under `prompts/` still agree.
+
+## Related files
+
+- `AGENTS.md`: canonical development and repo-structure guidance
+- `CLAUDE.md`: Claude-facing project instructions
+- `.env.example`: shared credential template
+- `.claude-plugin/marketplace.json`: marketplace source of truth
+- `CHANGELOG.md`: release history
+
+## License
+
+MIT

@@ -60,7 +60,7 @@ claude-homelab/
 │       ├── system-resources.toml
 │       └── zfs-health.toml
 │
-├── references/                      # Shared reference documentation
+├── docs/references/                 # Shared reference documentation
 │   └── security-patterns.md         # Reusable security patterns for scripts
 │
 ├── skills/                          # All service skills (16 services + 2 homelab-core)
@@ -537,7 +537,7 @@ log_success "Operation completed"
 
 ### Security Patterns
 
-See `references/security-patterns.md` for detailed patterns covering input sanitization, command injection prevention, URL encoding, SQL injection prevention, API key protection, path traversal prevention, and JSON response parsing.
+See `docs/references/security-patterns.md` for detailed patterns covering input sanitization, command injection prevention, URL encoding, SQL injection prevention, API key protection, path traversal prevention, and JSON response parsing.
 
 ## Testing
 
@@ -656,7 +656,7 @@ version: 1.2.0 → 2.0.0  # MAJOR bump
 - Removed phantom agents (agentic-orchestrator, exa-specialist, firecrawl-specialist)
 - Added /deploy command and prompts/ directory to structure
 - Extracted .toml prompt sidecars to prompts/ directory
-- Moved security patterns to references/security-patterns.md
+- Moved security patterns to docs/references/security-patterns.md
 - Replaced inline .env template with pointer to .env.example
 - Fixed .env location contradiction
 - Removed Table of Contents (use search instead)

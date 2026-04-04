@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+.ruff_cache
+.codex
 
 # ── Runtime artifacts ────────────────────────────────────────────────────────
 logs/
