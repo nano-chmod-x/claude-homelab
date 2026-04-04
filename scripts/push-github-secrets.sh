@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # scripts/push-github-secrets.sh
 #
-# Push MCP server credentials from ~/.claude-homelab/.env to GitHub Actions secrets
-# for all repos in the claude-homelab marketplace.
+# Push upstream service credentials from ~/.claude-homelab/.env to GitHub
+# Actions secrets for all MCP server repos.
+#
+# MCP bearer tokens (*_MCP_TOKEN) are NOT pushed — CI generates them at
+# runtime since it controls both the server and the client.
 #
 # Usage:
-#   ./scripts/push-github-secrets.sh            # Push all secrets to all repos
-#   ./scripts/push-github-secrets.sh overseerr-mcp  # Push secrets for one repo only
+#   ./scripts/push-github-secrets.sh            # Push all repos
+#   ./scripts/push-github-secrets.sh overseerr-mcp  # One repo only
 #
 # Prerequisites:
 #   - gh CLI authenticated: gh auth status
-#   - ~/.claude-homelab/.env populated with credentials
+#   - ~/.claude-homelab/.env populated with upstream credentials
 
 set -euo pipefail
 
@@ -55,52 +58,46 @@ TARGET="${1:-}"
 run_all() {
     push_repo overseerr-mcp \
         OVERSEERR_URL \
-        OVERSEERR_API_KEY \
-        OVERSEERR_MCP_TOKEN
+        OVERSEERR_API_KEY
 
     push_repo gotify-mcp \
         GOTIFY_URL \
-        GOTIFY_APP_TOKEN \
-        GOTIFY_MCP_TOKEN
+        GOTIFY_APP_TOKEN
 
     push_repo unifi-mcp \
         UNIFI_URL \
         UNIFI_USERNAME \
-        UNIFI_PASSWORD \
-        UNIFI_MCP_TOKEN
+        UNIFI_PASSWORD
 
-    push_repo swag-mcp \
-        SWAG_MCP_TOKEN
+    # swag-mcp: no upstream creds; uses fixture files in CI
+    # push_repo swag-mcp  (nothing to push)
 
     push_repo unraid-mcp \
         UNRAID_API_URL \
-        UNRAID_API_KEY \
-        UNRAID_MCP_TOKEN
+        UNRAID_API_KEY
 
     push_repo synapse-mcp \
-        SYNAPSE_MCP_TOKEN \
         SYNAPSE_MCP_URL \
         SYNAPSE_HOSTS_CONFIG
 
     push_repo arcane-mcp \
         ARCANE_API_URL \
-        ARCANE_API_KEY \
-        ARCANE_MCP_TOKEN
+        ARCANE_API_KEY
 
-    push_repo syslog-mcp \
-        SYSLOG_MCP_TOKEN
+    # syslog-mcp: no upstream creds; it IS the service
+    # push_repo syslog-mcp  (nothing to push)
 }
 
 if [[ -n "$TARGET" ]]; then
     case "$TARGET" in
-        overseerr-mcp)  push_repo overseerr-mcp OVERSEERR_URL OVERSEERR_API_KEY OVERSEERR_MCP_TOKEN ;;
-        gotify-mcp)     push_repo gotify-mcp GOTIFY_URL GOTIFY_APP_TOKEN GOTIFY_MCP_TOKEN ;;
-        unifi-mcp)      push_repo unifi-mcp UNIFI_URL UNIFI_USERNAME UNIFI_PASSWORD UNIFI_MCP_TOKEN ;;
-        swag-mcp)       push_repo swag-mcp SWAG_MCP_TOKEN ;;
-        unraid-mcp)     push_repo unraid-mcp UNRAID_API_URL UNRAID_API_KEY UNRAID_MCP_TOKEN ;;
-        synapse-mcp)    push_repo synapse-mcp SYNAPSE_MCP_TOKEN SYNAPSE_MCP_URL SYNAPSE_HOSTS_CONFIG ;;
-        arcane-mcp)     push_repo arcane-mcp ARCANE_API_URL ARCANE_API_KEY ARCANE_MCP_TOKEN ;;
-        syslog-mcp)     push_repo syslog-mcp SYSLOG_MCP_TOKEN ;;
+        overseerr-mcp)  push_repo overseerr-mcp OVERSEERR_URL OVERSEERR_API_KEY ;;
+        gotify-mcp)     push_repo gotify-mcp GOTIFY_URL GOTIFY_APP_TOKEN ;;
+        unifi-mcp)      push_repo unifi-mcp UNIFI_URL UNIFI_USERNAME UNIFI_PASSWORD ;;
+        swag-mcp)       echo "swag-mcp: no upstream secrets to push" ;;
+        unraid-mcp)     push_repo unraid-mcp UNRAID_API_URL UNRAID_API_KEY ;;
+        synapse-mcp)    push_repo synapse-mcp SYNAPSE_MCP_URL SYNAPSE_HOSTS_CONFIG ;;
+        arcane-mcp)     push_repo arcane-mcp ARCANE_API_URL ARCANE_API_KEY ;;
+        syslog-mcp)     echo "syslog-mcp: no upstream secrets to push" ;;
         *)
             echo "ERROR: Unknown repo '$TARGET'. Valid: overseerr-mcp gotify-mcp unifi-mcp swag-mcp unraid-mcp synapse-mcp arcane-mcp syslog-mcp" >&2
             exit 1
