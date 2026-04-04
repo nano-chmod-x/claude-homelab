@@ -7,7 +7,7 @@ Copy-paste ready commands for common Tautulli operations.
 ```bash
 # Add to ~/.claude-homelab/.env
 TAUTULLI_URL="http://192.168.1.100:8181"
-TAUTULLI_API_KEY="your-api-key-here"
+TAUTULLI_API_KEY="<your_api_key>"
 
 # Navigate to skill directory
 cd ~/claude-homelab/skills/tautulli

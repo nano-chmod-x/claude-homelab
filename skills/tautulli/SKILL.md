@@ -43,7 +43,7 @@ Add your Tautulli credentials to `~/.claude-homelab/.env`:
 ```bash
 # Tautulli Analytics
 TAUTULLI_URL="http://192.168.1.100:8181"
-TAUTULLI_API_KEY="YOUR_TAUTULLI_API_KEY"
+TAUTULLI_API_KEY="<your_tautulli_api_key>"
 ```
 
 - `TAUTULLI_URL`: Your Tautulli server URL with port (default: 8181)

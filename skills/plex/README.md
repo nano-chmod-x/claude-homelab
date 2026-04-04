@@ -34,14 +34,14 @@ Create your Plex configuration:
 
 ```bash
 export PLEX_URL="http://192.168.1.100:32400"
-export PLEX_TOKEN="your-plex-token-here"
+export PLEX_TOKEN="<your_plex_token>"
 ```
 
 Or add to your shell profile (`~/.bashrc`, `~/.zshrc`):
 
 ```bash
 echo 'export PLEX_URL="http://192.168.1.100:32400"' >> ~/.bashrc
-echo 'export PLEX_TOKEN="your-token"' >> ~/.bashrc
+echo 'export PLEX_TOKEN="<your_plex_token>"' >> ~/.bashrc
 source ~/.bashrc
 ```
 

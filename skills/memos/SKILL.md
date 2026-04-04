@@ -49,7 +49,7 @@ Add these variables to `~/.claude-homelab/.env`:
 ```bash
 # Memos - Self-hosted note-taking service
 MEMOS_URL="https://memos.example.com"
-MEMOS_API_TOKEN="your-api-token-here"
+MEMOS_API_TOKEN="<your_api_token>"
 ```
 
 **To generate an API token:**

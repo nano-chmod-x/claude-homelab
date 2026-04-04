@@ -51,7 +51,7 @@ Add these variables to `~/.claude-homelab/.env`:
 ```bash
 # Paperless-ngx - Document management system
 PAPERLESS_URL="https://paperless.example.com"
-PAPERLESS_API_TOKEN="your-api-token-here"
+PAPERLESS_API_TOKEN="<your_api_token>"
 ```
 
 **To generate an API token:**

@@ -12,13 +12,13 @@ https://bytestash.example.com
 
 ### API Key Authentication (Recommended)
 
-**Header:** `x-api-key: YOUR_API_KEY`
+**Header:** `x-api-key: <your_api_key>`
 
 Used for CLI and automation. API keys are managed in the web UI (Settings → API Keys).
 
 ### JWT Token Authentication
 
-**Header:** `bytestashauth: bearer YOUR_JWT_TOKEN`
+**Header:** `bytestashauth: bearer <your_jwt_token>`
 
 Used for web UI sessions. Tokens obtained from `/api/auth/login` endpoint.
 

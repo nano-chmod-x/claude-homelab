@@ -27,7 +27,7 @@ Common issues and solutions when working with SABnzbd API.
 3. **Test with simple version check:**
    ```bash
    curl -s "http://localhost:8080/api?mode=version" \
-     -H "X-API-Key: YOUR_API_KEY"
+     -H "X-API-Key: <your_api_key>"
    # Should return version number like "4.5.0"
    ```
 

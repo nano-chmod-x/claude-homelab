@@ -7,7 +7,7 @@ Quick command examples for common operations.
 ```bash
 # Add to ~/.claude-homelab/.env
 PAPERLESS_URL="https://paperless.example.com"
-PAPERLESS_API_TOKEN="your-api-token-here"
+PAPERLESS_API_TOKEN="<your_api_token>"
 ```
 
 ## Document Operations
@@ -466,7 +466,7 @@ Set these in `~/.claude-homelab/.env`:
 ```bash
 # Required
 PAPERLESS_URL="https://paperless.example.com"
-PAPERLESS_API_TOKEN="your-token-here"
+PAPERLESS_API_TOKEN="<your_api_token>"
 ```
 
 ## Useful Aliases

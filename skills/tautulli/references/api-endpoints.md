@@ -5,14 +5,14 @@ Complete reference for all Tautulli API v2 endpoints used in this skill.
 ## API Base URL
 
 ```
-http://YOUR_TAUTULLI_URL/api/v2?apikey=YOUR_API_KEY&cmd=COMMAND&param=value
+http://<your_tautulli_url>/api/v2?apikey=<your_api_key>&cmd=COMMAND&param=value
 ```
 
 All requests are GET requests with parameters in the query string.
 
 ## Authentication
 
-Add `apikey=YOUR_API_KEY` to all requests. The API key is found in:
+Add `apikey=<your_api_key>` to all requests. The API key is found in:
 - Settings → Web Interface → API → API Key
 
 ## Response Format

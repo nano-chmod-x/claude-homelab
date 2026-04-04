@@ -34,7 +34,7 @@ Add credentials to `.env` file: `~/.claude-homelab/.env`
 
 ```bash
 SONARR_URL="http://localhost:8989"
-SONARR_API_KEY="your-api-key-here"
+SONARR_API_KEY="<your_api_key>"
 SONARR_DEFAULT_QUALITY_PROFILE="1"  # Optional: defaults to 1 if not set
 ```
 

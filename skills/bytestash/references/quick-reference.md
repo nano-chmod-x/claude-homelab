@@ -8,7 +8,7 @@ Quick command examples for common ByteStash operations.
 # Add credentials to .env
 cat >> ~/.claude-homelab/.env <<EOF
 BYTESTASH_URL="https://bytestash.example.com"
-BYTESTASH_API_KEY="your-api-key-here"
+BYTESTASH_API_KEY="<your_api_key>"
 EOF
 
 chmod 600 ~/.claude-homelab/.env

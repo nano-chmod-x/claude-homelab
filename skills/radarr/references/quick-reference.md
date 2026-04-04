@@ -262,7 +262,7 @@ curl -X POST "$RADARR_URL/api/v3/command" \
 
 ```bash
 # Example: Add all movies from a TMDB list
-curl -s "https://api.themoviedb.org/3/list/YOUR_LIST_ID?api_key=YOUR_TMDB_KEY" | \
+curl -s "https://api.themoviedb.org/3/list/<your_list_id>?api_key=<your_tmdb_key>" | \
   jq -r '.items[] | @json' | \
   while read movie; do
     tmdb_id=$(echo "$movie" | jq -r '.id')

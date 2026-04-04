@@ -164,7 +164,7 @@ curl: (60) SSL certificate problem: unable to get local issuer certificate
    ```bash
    cat >> ~/.claude-homelab/.env <<'EOF'
    MEMOS_URL="https://memos.example.com"
-   MEMOS_API_TOKEN="your-token-here"
+   MEMOS_API_TOKEN="<your_api_token>"
    EOF
    ```
 

@@ -18,13 +18,13 @@ Common issues and solutions when working with the Linkding API.
 1. **Check token format:**
    ```bash
    # Correct format
-   curl -H "Authorization: Token YOUR_API_TOKEN" "$LINKDING_URL/api/bookmarks/"
+   curl -H "Authorization: Token <your_api_token>" "$LINKDING_URL/api/bookmarks/"
 
    # Wrong - missing "Token" keyword
-   curl -H "Authorization: YOUR_API_TOKEN" "$LINKDING_URL/api/bookmarks/"
+   curl -H "Authorization: <your_api_token>" "$LINKDING_URL/api/bookmarks/"
 
    # Wrong - using "Bearer" instead of "Token"
-   curl -H "Authorization: Bearer YOUR_API_TOKEN" "$LINKDING_URL/api/bookmarks/"
+   curl -H "Authorization: Bearer <your_api_token>" "$LINKDING_URL/api/bookmarks/"
    ```
 
 2. **Verify token is valid:**

@@ -27,7 +27,7 @@ Add these variables to `~/.claude-homelab/.env`:
 ```bash
 QBITTORRENT_URL="http://localhost:8080"
 QBITTORRENT_USERNAME="admin"
-QBITTORRENT_PASSWORD="your-password-here"
+QBITTORRENT_PASSWORD="<your_password>"
 ```
 
 Replace with your actual WebUI credentials.

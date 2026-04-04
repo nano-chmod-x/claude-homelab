@@ -8,7 +8,7 @@ Add credentials to `~/.claude-homelab/.env`:
 
 ```bash
 SONARR_URL="http://localhost:8989"
-SONARR_API_KEY="your-api-key-here"
+SONARR_API_KEY="<your_api_key>"
 ```
 
 Load in scripts:

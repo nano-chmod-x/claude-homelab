@@ -37,7 +37,7 @@ ByteStash is a self-hosted code snippet management service with multi-file suppo
 
 ```bash
 BYTESTASH_URL="https://bytestash.example.com"
-BYTESTASH_API_KEY="your-api-key-here"
+BYTESTASH_API_KEY="<your_api_key>"
 ```
 
 **How to get your API key:**

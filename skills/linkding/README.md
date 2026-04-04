@@ -24,7 +24,7 @@ Add these variables to `~/.claude-homelab/.env`:
 
 ```bash
 LINKDING_URL="http://localhost:9090"
-LINKDING_API_KEY="your-api-token-here"
+LINKDING_API_KEY="<your_api_token>"
 ```
 
 **Security:**

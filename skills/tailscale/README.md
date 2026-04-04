@@ -42,7 +42,7 @@ tailscale file cp document.pdf my-phone:
 Add these variables to `~/.claude-homelab/.env`:
 
 ```bash
-TAILSCALE_API_KEY="tskey-api-your-key-here"
+TAILSCALE_API_KEY="<your_tailscale_api_key>"
 TAILSCALE_TAILNET="-"
 ```
 

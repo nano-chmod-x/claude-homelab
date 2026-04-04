@@ -36,7 +36,7 @@ Add your Plex server credentials to `~/.claude-homelab/.env`:
 ```bash
 # Plex Media Server
 PLEX_URL="http://192.168.1.100:32400"
-PLEX_TOKEN="YOUR_PLEX_TOKEN"
+PLEX_TOKEN="<your_plex_token>"
 ```
 
 - `PLEX_URL`: Your Plex server URL with port (default: 32400)

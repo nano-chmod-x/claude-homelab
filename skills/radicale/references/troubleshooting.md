@@ -117,7 +117,7 @@ ERROR: .env file not found at /home/user/.claude-homelab/.env
 cat > ~/.claude-homelab/.env <<EOF
 RADICALE_URL="http://localhost:5232"
 RADICALE_USERNAME="admin"
-RADICALE_PASSWORD="your-password-here"
+RADICALE_PASSWORD="<your_password>"
 EOF
 
 # Set permissions

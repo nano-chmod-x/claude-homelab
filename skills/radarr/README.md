@@ -28,7 +28,7 @@ Add credentials to `~/.claude-homelab/.env`:
 
 ```bash
 RADARR_URL="http://localhost:7878"
-RADARR_API_KEY="your-api-key-here"
+RADARR_API_KEY="<your_api_key>"
 RADARR_DEFAULT_QUALITY_PROFILE="1"  # Optional (defaults to 1)
 ```
 

@@ -10,7 +10,7 @@
 Linkding uses token-based authentication. Generate a token from the Settings page in the web UI.
 
 ```bash
--H "Authorization: Token YOUR_API_TOKEN"
+-H "Authorization: Token <your_api_token>"
 ```
 
 ## Quick Start

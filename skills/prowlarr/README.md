@@ -24,12 +24,12 @@ Add the following to `~/.claude-homelab/.env`:
 
 ```bash
 PROWLARR_URL="http://localhost:9696"
-PROWLARR_API_KEY="your-api-key-here"
+PROWLARR_API_KEY="<your_api_key>"
 ```
 
 Replace:
 - `http://localhost:9696` with your Prowlarr URL
-- `your-api-key-here` with your actual API key
+- `<your_api_key>` with your actual API key
 
 ### 3. Test It
 

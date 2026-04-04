@@ -546,7 +546,7 @@ touch ~/.claude-homelab/.env
 # Add credentials
 cat >> ~/.claude-homelab/.env <<EOF
 PAPERLESS_URL="https://paperless.example.com"
-PAPERLESS_API_TOKEN="your-token-here"
+PAPERLESS_API_TOKEN="<your_api_token>"
 EOF
 
 # Set permissions

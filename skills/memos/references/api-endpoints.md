@@ -13,7 +13,7 @@ https://memos.example.com/api/v1
 All requests require Bearer token authentication:
 
 ```bash
-Authorization: Bearer YOUR_ACCESS_TOKEN
+Authorization: Bearer <your_access_token>
 ```
 
 ## Memo Service

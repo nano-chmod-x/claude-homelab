@@ -10,7 +10,7 @@
 Prowlarr uses API key authentication. Find your API key in Settings → General → Security.
 
 ```bash
--H "X-Api-Key: YOUR_API_KEY"
+-H "X-Api-Key: <your_api_key>"
 ```
 
 ## Quick Start

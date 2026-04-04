@@ -66,7 +66,7 @@ Add your Tautulli credentials to `~/.claude-homelab/.env`:
 ```bash
 # Tautulli Analytics
 TAUTULLI_URL="http://192.168.1.100:8181"
-TAUTULLI_API_KEY="YOUR_API_KEY_HERE"
+TAUTULLI_API_KEY="<your_api_key>"
 ```
 
 **Configuration options:**
@@ -352,7 +352,7 @@ curl -I http://localhost:8181
 echo $TAUTULLI_URL
 
 # Test with full URL
-curl "http://localhost:8181/api/v2?apikey=YOUR_KEY&cmd=get_server_info"
+curl "http://localhost:8181/api/v2?apikey=<your_api_key>&cmd=get_server_info"
 ```
 
 ### "Invalid API key" or authentication error

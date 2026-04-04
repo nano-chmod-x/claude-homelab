@@ -10,8 +10,8 @@
 SABnzbd uses API key authentication. You can find your API key in Config → General → Security.
 
 Two authentication methods:
-- **Query Parameter:** `?apikey=YOUR_API_KEY`
-- **Header:** `X-API-Key: YOUR_API_KEY` (recommended)
+- **Query Parameter:** `?apikey=<your_api_key>`
+- **Header:** `X-API-Key: <your_api_key>` (recommended)
 
 ## Quick Start
 

@@ -76,7 +76,7 @@ Common issues and solutions when using the Tautulli skill.
    ```bash
    # Correct format in .env
    TAUTULLI_URL="http://192.168.1.100:8181"
-   TAUTULLI_API_KEY="your-api-key-here"
+   TAUTULLI_API_KEY="<your_api_key>"
 
    # NO spaces around =
    # Values can be with or without quotes
@@ -564,7 +564,7 @@ env | grep TAUTULLI
 
 # Expected output:
 TAUTULLI_URL=http://192.168.1.100:8181
-TAUTULLI_API_KEY=your-key-here
+TAUTULLI_API_KEY=<your_api_key>
 ```
 
 ## Resources

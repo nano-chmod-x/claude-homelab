@@ -12,7 +12,7 @@ Plex uses token-based authentication. You can obtain your token from:
 - Or by logging in via the API and extracting from response
 
 ```bash
--H "X-Plex-Token: YOUR_PLEX_TOKEN"
+-H "X-Plex-Token: <your_plex_token>"
 ```
 
 ### Get Token via API

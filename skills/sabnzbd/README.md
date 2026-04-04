@@ -24,12 +24,12 @@ Add these lines to `~/.claude-homelab/.env`:
 
 ```bash
 SABNZBD_URL="http://localhost:8080"
-SABNZBD_API_KEY="your-api-key-here"
+SABNZBD_API_KEY="<your_api_key>"
 ```
 
 Replace:
 - `http://localhost:8080` with your SABnzbd URL
-- `your-api-key-here` with your actual API key
+- `<your_api_key>` with your actual API key
 
 ### 3. Secure the .env File
 
