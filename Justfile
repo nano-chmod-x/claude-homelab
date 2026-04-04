@@ -910,6 +910,16 @@ mcp-security:
     [[ $fail -gt 0 ]] && exit 1
     exit 0
 
+# Push MCP server credentials from ~/.claude-homelab/.env to GitHub Actions secrets
+push-secrets repo="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -n "{{repo}}" ]]; then
+        bash scripts/push-github-secrets.sh "{{repo}}"
+    else
+        bash scripts/push-github-secrets.sh
+    fi
+
 # ─── Docker Compose Operations ───────────────────────────────────────
 
 # Resolve a plugin name to its compose directory
