@@ -1,6 +1,6 @@
 {
   "name": "claude-homelab",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Core homelab agents, commands, and setup/health skills for self-hosted service management. Includes interactive credential setup wizard and unified service health dashboard.",
   "author": "Jacob Magar <jmagar@users.noreply.github.com>",
   "homepage": "https://github.com/jmagar/claude-homelab",

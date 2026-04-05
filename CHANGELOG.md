@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-04-05
+
+### Added
+- Comprehensive documentation structure (`docs/`) with 33 new files across 6 directories
+- `docs/SETUP.md` — Step-by-step setup guide for both install paths (plugin marketplace + bash symlinks)
+- `docs/CONFIG.md` — Complete environment variable reference for all 22 services
+- `docs/GUARDRAILS.md` — Security standards and credential management rules
+- `docs/CHECKLIST.md` — Pre-release quality checklist
+- `docs/INVENTORY.md` — Full component inventory (18 skills, 1 agent, 16 commands, 10 MCP repos)
+- `docs/repo/` — Repository structure, memory system, coding rules, scripts reference, Justfile recipes
+- `docs/stack/` — Technology choices (Bash-centric), architecture diagrams, prerequisites
+- `docs/plugin/` — All plugin surfaces: manifests, agents, skills, commands, hooks, channels, schedules, marketplace
+- `docs/mcp/` — MCP fleet documentation: auth patterns, 2-tool design, transport, client connection, common patterns
+- `docs/upstream/` — Upstream service integration reference for all 16 services with auth methods and env vars
+
 ## [1.4.0] - 2026-04-03
 
 ### Added
