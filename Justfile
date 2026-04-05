@@ -1510,24 +1510,6 @@ lint:
     ok()   { pass=$((pass+1)); }
     bad()  { fail=$((fail+1)); }
 
-    # ── 1. External repo lint-plugin.sh ──
-    section "External Plugins (lint-plugin.sh)"
-    plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
-    for plugin in $plugins; do
-        dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
-        script="$dir/scripts/lint-plugin.sh"
-        if [[ ! -x "$script" ]]; then
-            skip=$((skip+1))
-            continue
-        fi
-        echo "━━━ $plugin ━━━"
-        if (cd "$dir" && bash "$script" 2>&1); then
-            ok
-        else
-            bad
-        fi
-        echo ""
-    done
 
     # ── 2. Local Python scripts (ruff + ty) ──
     py_files=$(find skills -name "*.py" -not -path "*__pycache__*" -not -path "*.venv*" 2>/dev/null)

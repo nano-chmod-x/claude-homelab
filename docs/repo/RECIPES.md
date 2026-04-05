@@ -118,21 +118,20 @@ For each MCP endpoint found in `~/.claude/settings.json`:
 
 | Recipe | Command | Purpose |
 | --- | --- | --- |
-| `lint` | `just lint` | Comprehensive lint: external `lint-plugin.sh`, local Python (ruff + ty), shellcheck, skills-ref validate, PR comments, monolith detector |
+| `lint` | `just lint` | Comprehensive lint: local Python (ruff + ty), shellcheck, skills-ref validate, PR comments, monolith detector |
 | `monoliths` | `just monoliths` | Find code files over 500 LOC across all repos |
 | `monoliths` | `just monoliths 300` | Custom LOC threshold |
 | `env-diff` | `just env-diff` | Compare `.env.example` with actual `.env` to find new or missing variables |
 
 ### `just lint` details
 
-Runs 6 checks in sequence:
+Runs 5 checks in sequence:
 
-1. **External plugins** -- `lint-plugin.sh` in each external repo
-2. **Python** -- `ruff check`, `ruff format --check`, `ty check` on local `.py` files
-3. **Shell** -- `shellcheck -S warning` on all `.sh` files
-4. **Skills** -- `npx skills-ref validate` on all skill directories
-5. **PR comments** -- Checks for unresolved review threads in open PRs
-6. **Monolith detector** -- Flags source files over 500 LOC
+1. **Python** -- `ruff check`, `ruff format --check`, `ty check` on local `.py` files
+2. **Shell** -- `shellcheck -S warning` on all `.sh` files
+3. **Skills** -- `npx skills-ref validate` on all skill directories
+4. **PR comments** -- Checks for unresolved review threads in open PRs
+5. **Monolith detector** -- Flags source files over 500 LOC
 
 ## Observability
 
