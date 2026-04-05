@@ -72,3 +72,6 @@ htmlcov/
 node_modules/
 dist/
 *.tsbuildinfo
+
+# Personal local cheatsheet (never commit)
+CLAUDE.md.local
