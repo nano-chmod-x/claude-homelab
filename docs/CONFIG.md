@@ -261,17 +261,6 @@ Supports multiple Unraid servers. Skill variables use numbered suffixes; MCP var
 
 ## Research and development
 
-### Axon
-
-| Variable | Required | Default | Sensitive | Description |
-| --- | --- | --- | --- | --- |
-| `AXON_MCP_TOKEN` | MCP only | -- | yes | Bearer token for MCP auth |
-| `AXON_API_URL` | yes | -- | no | Axon API URL |
-| `AXON_API_KEY` | yes | -- | yes | Axon API key |
-| `AXON_MCP_HOST` | no | `0.0.0.0` | no | MCP bind address |
-| `AXON_MCP_PORT` | no | `8016` | no | MCP server port |
-| `AXON_LOG_LEVEL` | no | `INFO` | no | Log verbosity |
-
 ### NotebookLM
 
 | Variable | Required | Default | Sensitive | Description |

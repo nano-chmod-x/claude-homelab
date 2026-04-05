@@ -51,7 +51,6 @@ Each external MCP server plugin is installed separately:
 /plugin install arcane-mcp @jmagar-claude-homelab
 /plugin install syslog-mcp @jmagar-claude-homelab
 /plugin install plugin-lab @jmagar-claude-homelab
-/plugin install axon @jmagar-claude-homelab
 ```
 
 Only install the plugins for services you actually run.

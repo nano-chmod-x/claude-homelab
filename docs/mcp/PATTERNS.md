@@ -21,7 +21,7 @@ async def my_service(action: str, subaction: str | None = None, **kwargs) -> str
 ```
 
 ```rust
-// Rust (syslog-mcp, axon) -- enum-based dispatch
+// Rust (syslog-mcp) -- enum-based dispatch
 #[derive(Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 enum Action {
@@ -171,7 +171,6 @@ Every server supports a log level env var:
 | gotify-mcp | `GOTIFY_LOG_LEVEL` | DEBUG |
 | swag-mcp | `SWAG_MCP_LOG_LEVEL` | INFO |
 | syslog-mcp | `RUST_LOG` | info |
-| axon | `AXON_LOG_LEVEL` | INFO |
 
 ### Structured Logging (Optional)
 

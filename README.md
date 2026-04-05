@@ -191,7 +191,7 @@ Each external MCP plugin has its own block of server-config vars. See `.env.exam
 | `/check` | `[instructions]` | Read the latest screenshot from `~/Pictures/Screenshots` and describe it. Pass optional instructions (e.g., "extract the text", "what error is shown"). |
 | `/deploy` | `[plugin-name]` | Build and start MCP plugin containers via `docker compose up --build -d`. Deploys all external plugins by default. Pass a plugin name to deploy only that one. Reads compose files from `~/.claude/plugins/cache/claude-homelab/<name>/<version>/`. Skips `tests/` subdirs. Reports a status table with notes on failures. |
 | `/quick-push` | — | Standardized commit-and-push workflow. Checks branch (creates feature branch if on main), bumps version in all manifests, updates `CHANGELOG.md`, stages all changes, commits with co-authorship signature, pushes, then invokes `save-to-md` and writes Neo4j commit graph entries. |
-| `/save-to-md` | `[output-path]` | Document the full session as a Markdown file. Defaults to `docs/sessions/YYYY-MM-DD-description.md`. Embeds the file in Qdrant via Axon. Creates Neo4j entities and relations for files, services, features, and bugs touched in the session. |
+| `/save-to-md` | `[output-path]` | Document the full session as a Markdown file. Defaults to `docs/sessions/YYYY-MM-DD-description.md`. Creates Neo4j entities and relations for files, services, features, and bugs touched in the session. |
 | `/validate-plan` | `<plan-file-or-text>` | Audit a technical implementation plan against homelab standards. Checks for exposed secrets, correct credential loading pattern (`scripts/load-env.sh`), required docs (`README.md`, `SKILL.md`, references), `confirm=True` gate on destructive actions, and standard directory structure. Outputs a compliance table and required changes list. |
 
 ### `/homelab:*` Commands
@@ -312,7 +312,6 @@ The `.claude-plugin/marketplace.json` catalog covers 27 plugins total.
 | `arcane-mcp` | `jmagar/arcane-mcp` | infrastructure |
 | `syslog-mcp` | `jmagar/syslog-mcp` | infrastructure |
 | `plugin-lab` | `jmagar/plugin-lab` | dev-tools |
-| `axon` | `jmagar/axon` | research |
 
 ### 16 bundled skill-only plugins
 
@@ -540,7 +539,6 @@ Justfile                Validation and maintenance recipes
 | [arcane-mcp](https://github.com/jmagar/arcane-mcp) | infrastructure | Manage Docker environments, containers, images, volumes, networks, and GitOps via Arcane. |
 | [syslog-mcp](https://github.com/jmagar/syslog-mcp) | infrastructure | Receive, index, and search syslog streams from all homelab hosts via SQLite FTS5. |
 | [plugin-lab](https://github.com/jmagar/plugin-lab) | dev-tools | Scaffold, review, align, and deploy homelab MCP plugins with agents and canonical templates. |
-| [axon](https://github.com/jmagar/axon) | research | Self-hosted web crawl, ingest, embed, and RAG pipeline with MCP tooling. |
 
 ## License
 

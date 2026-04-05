@@ -97,7 +97,6 @@ The `claude-homelab` marketplace (`.claude-plugin/marketplace.json`) encompasses
 | 8 | **arcane-mcp** | [jmagar/arcane-mcp](https://github.com/jmagar/arcane-mcp) | `~/workspace/arcane-mcp` | infrastructure |
 | 9 | **syslog-mcp** | [jmagar/syslog-mcp](https://github.com/jmagar/syslog-mcp) | `~/workspace/syslog-mcp` | infrastructure |
 | 10 | **plugin-lab** | [jmagar/plugin-lab](https://github.com/jmagar/plugin-lab) | `~/workspace/plugin-lab` | dev-tools |
-| 11 | **axon** | [jmagar/axon](https://github.com/jmagar/axon) | `~/workspace/axon_rust` | research |
 
 The remaining 16 marketplace entries (bytestash, gh-address-comments, linkding, memos, notebooklm, paperless-ngx, plex, prowlarr, qbittorrent, radarr, radicale, sabnzbd, sonarr, tailscale, tautulli, zfs) are **bundled skill-only** plugins sourced from `./skills/*` within this repo. They graduate to their own external repo when they gain additional plugin surface area (agents, commands, MCP servers, etc.).
 

@@ -23,7 +23,6 @@ Transport configuration across the 10 external MCP server repos.
 | 7 | arcane-mcp | http | `ARCANE_MCP_TRANSPORT` | TypeScript |
 | 8 | syslog-mcp | http | `SYSLOG_MCP_TRANSPORT` | Rust |
 | 9 | plugin-lab | -- | -- | Mixed |
-| 10 | axon | http | -- | Rust |
 
 ## stdio
 
@@ -88,7 +87,6 @@ Each fleet server uses a unique port to avoid conflicts:
 | 7 | arcane-mcp | 44332 | -- | `ARCANE_MCP_PORT` |
 | 8 | syslog-mcp | 3100 | `SYSLOG_MCP_HOST` | `SYSLOG_MCP_PORT` |
 | 9 | plugin-lab | -- | -- | -- |
-| 10 | axon | 8016 | `AXON_MCP_HOST` | `AXON_MCP_PORT` |
 
 All servers bind to `0.0.0.0` by default so they are reachable from the Docker network and reverse proxy.
 

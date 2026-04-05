@@ -24,7 +24,6 @@ This keeps the MCP tool surface small (2 tools per server) while supporting arbi
 | 7 | arcane-mcp | _(OAuth-gated)_ | _(OAuth-gated)_ |
 | 8 | syslog-mcp | `search_logs`, `tail_logs`, `get_errors`, `list_hosts`, `correlate_events`, `get_stats` | `syslog_help` |
 | 9 | plugin-lab | _(dev tooling)_ | -- |
-| 10 | axon | _(research tooling)_ | -- |
 
 **Note:** Some servers (overseerr-mcp, syslog-mcp) use multiple focused tools instead of a single action router. This is acceptable when actions have fundamentally different parameter schemas. The help companion pattern still applies.
 

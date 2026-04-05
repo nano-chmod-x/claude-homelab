@@ -34,40 +34,6 @@ Content quality rules:
 - Keep sections concise (target max 5 bullets per section), but exceed when needed to preserve material implementation details, critical evidence, or safety context.
 - Use file:line references (e.g., `server.ts:45`) for code-specific findings.
 
-## Axon Embedding Integration (Required)
-
-After writing the markdown file, embedding with Axon is **mandatory** (always attempt):
-
-1. Determine the final saved path (the explicit `$ARGUMENTS` target or the default generated path under `docs/sessions/`).
-2. Optional preflight (recommended, not a substitute for embedding):
-   ```bash
-   axon status
-   ```
-   - If services needed for embed/retrieve are unavailable, still continue and attempt embed/retrieve; report failures clearly and continue with markdown + Neo4j capture.
-3. Run embed and capture the job ID from the initial response:
-   ```bash
-   axon embed "<saved-session-markdown-path>" --json
-   ```
-   - The initial JSON response contains `data.job_id` (and status `"queued"`) — **not** `data.url`/`data.collection`. Those are only available after the job completes.
-4. Do **not** pass `--url` / `--source-id` / `--collection` for this workflow.
-   - Local file embeds now derive a stable source ID automatically.
-   - Local file embeds route to the repo-name collection automatically.
-   - Web crawl docs remain in your configured crawl collection (e.g., `firecrawl`).
-5. Poll for completion and extract source metadata:
-   ```bash
-   axon embed status "<job_id-from-step-3>" --json
-   ```
-   - Read `data.url` as the source ID and `data.collection` as the collection from **this** output (not the initial embed response).
-   - Retry if status is still `"running"` or `"queued"`.
-6. Verify indexing succeeded using status output values (not assumptions):
-   ```bash
-   axon retrieve "<source-id-from-status-data.url>" --collection "<collection-from-status-data.collection>"
-   ```
-   - If retrieve succeeds, embedding is confirmed.
-   - If it fails, report the error and include attempted source ID + collection.
-7. You must always attempt both embed and retrieve verification. If embedding fails due to environment/service availability (for example TEI/Qdrant unavailable), report the error clearly but still complete session markdown + Neo4j capture.
-8. If embed succeeds but retrieve fails, mark Axon status as **partial failure** (embed success, verify failed).
-
 ## Neo4j Memory Integration
 
 After saving the markdown file, extract and store session knowledge in Neo4j:

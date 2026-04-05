@@ -105,11 +105,10 @@ Each is an independent repository with its own MCP server, Docker deployment, an
 | 7 | arcane-mcp | [jmagar/arcane-mcp](https://github.com/jmagar/arcane-mcp) | 1.1.3 | infrastructure |
 | 8 | syslog-mcp | [jmagar/syslog-mcp](https://github.com/jmagar/syslog-mcp) | 1.0.0 | infrastructure |
 | 9 | plugin-lab | [jmagar/plugin-lab](https://github.com/jmagar/plugin-lab) | 1.0.0 | dev-tools |
-| 10 | axon | [jmagar/axon](https://github.com/jmagar/axon) | 0.34.1 | research |
 
-## Marketplace summary (27 entries)
+## Marketplace summary (26 entries)
 
-The marketplace manifest at `.claude-plugin/marketplace.json` contains 27 plugin entries:
+The marketplace manifest at `.claude-plugin/marketplace.json` contains 26 plugin entries:
 
 | Type | Count | Description |
 | --- | --- | --- |

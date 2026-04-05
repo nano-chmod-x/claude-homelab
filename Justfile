@@ -67,7 +67,6 @@ validate:
         ["synapse-mcp"]="3000"
         ["arcane-mcp"]="44332"
         ["syslog-mcp"]="3100"
-        ["axon"]="8001"
     )
     # MCP URL var names in ~/.claude/settings.json
     declare -A MCP_URL_VARS=(
@@ -285,7 +284,7 @@ validate:
     mcp_json_missing=()
     for plugin in $(echo "${!MCP_PORTS[@]}" | tr ' ' '\n' | sort); do
         [[ -z "${INSTALLED[$plugin]:-}" ]] && continue
-        [[ "$plugin" == "plugin-lab" || "$plugin" == "axon" ]] && continue
+        [[ "$plugin" == "plugin-lab" ]] && continue
         workspace="$HOME/workspace/$plugin"
         if [[ -f "$workspace/.mcp.json" ]]; then
             mcp_json_count=$((mcp_json_count+1))
@@ -433,9 +432,7 @@ plugins:
         exit 1
     fi
     # Known local path overrides (repo name != directory name)
-    declare -A path_overrides=(
-        ["jmagar/axon"]="$HOME/workspace/axon_rust"
-    )
+    declare -A path_overrides=()
     printf "%-24s %-10s %-30s %s\n" "PLUGIN" "TYPE" "REPO" "LOCAL PATH"
     printf "%-24s %-10s %-30s %s\n" "────────────────────────" "──────────" "──────────────────────────────" "──────────────────────────────"
     jq -r '.plugins[] |
@@ -474,7 +471,7 @@ validate-skills:
     #!/usr/bin/env bash
     set -euo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     pass=0; fail=0; skip=0
     errors=()
 
@@ -533,7 +530,7 @@ validate-skill name:
     #!/usr/bin/env bash
     set -euo pipefail
     input="{{name}}"
-    declare -A overrides=(["jmagar/axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     # Count slashes to determine format
     slashes="${input//[^\/]/}"
     if [[ ${#slashes} -ge 2 ]]; then
@@ -566,7 +563,7 @@ test-unit name="all":
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     pass=0; fail=0; skip=0
 
     run_unit() {
@@ -631,7 +628,7 @@ test-live name="all":
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
 
     find_test_script() {
         local dir="$1"
@@ -929,7 +926,7 @@ _compose_dir name:
     set -euo pipefail
     manifest=".claude-plugin/marketplace.json"
     # Known path overrides
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     plugin="{{name}}"
     # Check override first
     if [[ -n "${overrides[$plugin]:-}" ]]; then
@@ -1005,7 +1002,7 @@ _compose_each +args:
     #!/usr/bin/env bash
     set -euo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
     for plugin in $plugins; do
         dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
@@ -1023,7 +1020,7 @@ compose-status:
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
     printf "%-24s %-10s %s\n" "PLUGIN" "STATUS" "COMPOSE DIR"
     printf "%-24s %-10s %s\n" "────────────────────────" "──────────" "──────────────────────────────"
@@ -1267,7 +1264,7 @@ update name="all":
     #!/usr/bin/env bash
     set -euo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
 
     do_update() {
         local plugin="$1"
@@ -1308,7 +1305,7 @@ git-status:
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
 
     printf "%-24s %-12s %-12s %s\n" "REPO" "BRANCH" "STATUS" "DETAILS"
     printf "%-24s %-12s %-12s %s\n" "────────────────────────" "────────────" "────────────" "──────────────────────"
@@ -1484,7 +1481,7 @@ outdated:
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     plugins=$(jq -r '.plugins[] | select(.source | type == "object") | .name' "$manifest")
     for plugin in $plugins; do
         dir="${overrides[$plugin]:-$HOME/workspace/$plugin}"
@@ -1503,7 +1500,7 @@ lint:
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     pass=0; fail=0; skip=0
 
     section() { echo ""; echo "═══ $1 ═══"; }
@@ -1668,7 +1665,7 @@ monoliths threshold="500":
     #!/usr/bin/env bash
     set -uo pipefail
     manifest=".claude-plugin/marketplace.json"
-    declare -A overrides=(["axon"]="$HOME/workspace/axon_rust")
+    declare -A overrides=()
     threshold="{{threshold}}"
     count=0
 

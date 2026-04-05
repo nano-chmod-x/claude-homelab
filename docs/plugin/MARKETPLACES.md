@@ -46,7 +46,6 @@ These plugins live in their own GitHub repositories:
 | arcane-mcp | `jmagar/arcane-mcp` | infrastructure | 1.1.3 |
 | syslog-mcp | `jmagar/syslog-mcp` | infrastructure | 1.0.0 |
 | plugin-lab | `jmagar/plugin-lab` | dev-tools | 1.0.0 |
-| axon | `jmagar/axon` | research | 0.34.1 |
 
 ### Bundled skill plugins (16)
 
@@ -116,7 +115,7 @@ Key difference: external plugins use the object format `{"source": "github", "re
 | utilities | Notifications, bookmarks, notes, docs | 5 |
 | downloads | Torrent and Usenet management | 2 |
 | dev-tools | Development and scaffolding | 2 |
-| research | Experimental, AI, and crawling | 2 |
+| research | Experimental, AI, and crawling | 1 |
 
 ## Graduation criteria
 

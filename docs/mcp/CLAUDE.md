@@ -17,7 +17,6 @@ These docs cover fleet-level patterns and conventions. For individual server int
 | 7 | [arcane-mcp](https://github.com/jmagar/arcane-mcp) | infrastructure | TypeScript | Docker management via Arcane API |
 | 8 | [syslog-mcp](https://github.com/jmagar/syslog-mcp) | infrastructure | Rust | Syslog receiver and log search |
 | 9 | [plugin-lab](https://github.com/jmagar/plugin-lab) | dev-tools | Mixed | Plugin scaffolding and templates |
-| 10 | [axon](https://github.com/jmagar/axon) | research | Rust | Web crawling and RAG pipeline |
 
 ## Documentation Index
 

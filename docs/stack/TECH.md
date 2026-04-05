@@ -120,7 +120,6 @@ For reference, the 10 external MCP server repos use their own stacks:
 | synapse-mcp | TypeScript | MCP SDK + Express |
 | syslog-mcp | Rust | axum + tokio |
 | plugin-lab | Mixed | Templates for all three |
-| axon | Rust | axum + tokio |
 
 Each is documented in its own repository.
 

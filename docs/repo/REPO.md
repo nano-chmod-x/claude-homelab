@@ -162,4 +162,3 @@ skills/<name>/
 | arcane-mcp | ~/workspace/arcane-mcp |
 | syslog-mcp | ~/workspace/syslog-mcp |
 | plugin-lab | ~/workspace/plugin-lab |
-| axon | ~/workspace/axon_rust |

@@ -17,7 +17,6 @@ plugin marketplace add jmagar/swag-mcp
 plugin marketplace add jmagar/synapse-mcp
 plugin marketplace add jmagar/arcane-mcp
 plugin marketplace add jmagar/syslog-mcp
-plugin marketplace add jmagar/axon
 plugin marketplace add jmagar/plugin-lab
 ```
 
@@ -128,7 +127,6 @@ Quick reference for connecting to every fleet server via HTTP:
 | synapse-mcp | `http://localhost:8014/mcp` | `SYNAPSE_MCP_TOKEN` |
 | arcane-mcp | `http://localhost:44332/mcp` | `ARCANE_MCP_TOKEN` |
 | syslog-mcp | `http://localhost:3100/mcp` | `SYSLOG_MCP_TOKEN` |
-| axon | `http://localhost:8016/mcp` | `AXON_MCP_TOKEN` |
 
 ## Verifying Connection
 
@@ -143,7 +141,7 @@ curl -s http://localhost:9151/health
 claude "call overseerr_help()"
 
 # Batch health check for all fleet servers
-for port in 9151 6970 8001 9158 8012 8014 44332 3100 8016; do
+for port in 9151 6970 8001 9158 8012 8014 44332 3100; do
   echo -n "Port $port: "
   curl -sf "http://localhost:$port/health" 2>/dev/null || echo "UNREACHABLE"
 done

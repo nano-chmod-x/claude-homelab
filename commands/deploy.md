@@ -18,7 +18,7 @@ The marketplace lives at: `!cat ~/.claude/plugins/marketplaces/claude-homelab/.c
    - If neither found, report error and stop
 
 3. **Determine which plugins to deploy**:
-   - If `$ARGUMENTS` is a plugin name (e.g. `synapse-mcp`, `axon`), deploy only that one
+   - If `$ARGUMENTS` is a plugin name (e.g. `synapse-mcp`), deploy only that one
    - If no arguments, deploy **all** external plugins from the marketplace
 
 4. **For each plugin to deploy**:

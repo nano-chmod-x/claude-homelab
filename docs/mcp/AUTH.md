@@ -42,7 +42,6 @@ openssl rand -hex 32
 | 7 | arcane-mcp | `ARCANE_MCP_TOKEN` | 44332 |
 | 8 | syslog-mcp | `SYSLOG_MCP_TOKEN` | 3100 |
 | 9 | plugin-lab | _(dev tooling, no runtime token)_ | -- |
-| 10 | axon | `AXON_MCP_TOKEN` | 8016 |
 
 ### No-Auth Mode
 
@@ -89,7 +88,6 @@ Each MCP server authenticates to its upstream service using service-specific cre
 | synapse-mcp | SSH key auth | Per-host SSH config |
 | arcane-mcp | API key | `ARCANE_API_URL`, `ARCANE_API_KEY` |
 | syslog-mcp | Direct DB access | `SYSLOG_MCP_DB_PATH` (no upstream API) |
-| axon | API key | `AXON_API_URL`, `AXON_API_KEY` |
 
 ## Plugin userConfig Integration
 
