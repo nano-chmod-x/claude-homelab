@@ -5,3 +5,7 @@ multiple skills, scripts, or workflows.
 
 Use this directory for cross-cutting guidance that is not specific to one skill
 or one session note.
+
+## Contents
+
+- [security-patterns.md](security-patterns.md) — Reusable security patterns for scripts (input sanitization, command injection prevention, URL encoding, SQL injection prevention, API key protection, path traversal prevention, JSON response parsing)
