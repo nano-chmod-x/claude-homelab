@@ -1,7 +1,7 @@
 # Claude Homelab
-
+```
 git clone https://github.com/nano-chmod-x/claude-homelab.git
-
+```
 
 Current release: 1.4.0.
 
