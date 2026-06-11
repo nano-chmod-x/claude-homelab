@@ -1,5 +1,8 @@
 # Claude Homelab
 
+git clone https://github.com/nano-chmod-x/claude-homelab.git
+
+
 Current release: 1.4.0.
 
 Homelab plugin hub for Claude Code, Codex, and Gemini. This repository is the source of truth for the `homelab-core` plugin, bundled skill-only integrations, agents, commands, and shared credential bootstrapping.
